@@ -1,0 +1,1836 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <title>倒數計時器_plus</title>
+  <style>
+    * { box-sizing: border-box; user-select: none; margin: 0; padding: 0; }
+    
+    body {
+      color: #e2e8f0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", sans-serif;
+      overflow: hidden;
+      height: 100vh;
+      border-radius: 8px;
+      padding: 4px;
+    }
+    
+    .draggable { -webkit-app-region: drag; }
+    .non-draggable { -webkit-app-region: no-drag; }
+
+    .btn {
+      background: #334155;
+      border: 1px solid #475569;
+      color: white;
+      padding: 5px 12px;
+      font-size: 12px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .btn:hover { background: #475569; }
+    .btn-blue { background: #2563eb; border-color: #3b82f6; }
+    .btn-green { background: #15803d; border-color: #22c55e; color: #bbf7d0; font-weight: bold; }
+    .btn-green.off { background: #7f1d1d; border-color: #ef4444; color: #fecaca; }
+    .btn-red { background: #dc2626; border-color: #ef4444; }
+    .btn-purple { background: #6366f1; border-color: #818cf8; }
+    .btn-coral { background: #d97706; border-color: #f59e0b; }
+    .btn-sub { background: #38425d; border: 1px solid #4f5d82; }
+
+    .os-switch-box {
+      display: inline-flex;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .os-btn {
+      padding: 3px 8px;
+      font-size: 11px;
+      cursor: pointer;
+      color: #94a3b8;
+      background: transparent;
+      border: none;
+    }
+    .os-btn.active {
+      background: #2563eb;
+      color: #ffffff;
+      font-weight: bold;
+    }
+
+    input[type="text"], input[type="number"], select {
+      background: #0f172a;
+      border: 1px solid #334155;
+      color: #f8fafc;
+      padding: 5px 10px;
+      border-radius: 4px;
+      font-size: 13px;
+      user-select: text;
+    }
+
+    input[type="number"]::-webkit-outer-spin-button,
+    input[type="number"]::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
+
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #151a27;
+      padding: 8px 14px;
+    }
+
+    /* 主畫面 */
+    #view-main {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      background: #1e2538;
+      border: 1px solid #334155;
+      border-radius: 6px;
+    }
+    .main-center-title {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 12px;
+      color: #94a3b8;
+      pointer-events: none;
+    }
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      background: #252d42;
+      padding: 8px 14px;
+      border-bottom: 1px solid #334155;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .main-table { flex: 1; padding: 10px 16px; overflow-y: auto; }
+    .table-header {
+      display: grid;
+      grid-template-columns: 200px 120px 1fr 120px;
+      font-weight: bold;
+      color: #94a3b8;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #334155;
+      font-size: 13px;
+    }
+    .table-row {
+      display: grid;
+      grid-template-columns: 200px 120px 1fr 120px;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      font-size: 14px;
+    }
+    .val-display { font-size: 26px; font-weight: bold; color: #60a5fa; transition: color 0.2s; }
+    .val-display.active { color: #38bdf8; text-shadow: 0 0 8px rgba(56, 189, 248, 0.5); }
+
+    /* 設定檔管理 */
+    #view-profiles {
+      display: none;
+      flex-direction: column;
+      height: 100%;
+      background: #181f30;
+      border: 1px solid #334155;
+      border-radius: 6px;
+    }
+    .profile-body {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 240px 1fr;
+      gap: 14px;
+      padding: 14px;
+      overflow: hidden;
+    }
+    .profile-left { display: flex; flex-direction: column; gap: 6px; }
+    .profile-slots-box {
+      flex: 1;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 4px;
+      overflow-y: auto;
+    }
+    .slot-item {
+      padding: 7px 10px;
+      font-size: 12px;
+      border-bottom: 1px solid #1e293b;
+      cursor: pointer;
+    }
+    .slot-item.selected { background: #2563eb; color: white; font-weight: bold; }
+    .slot-item.active-profile { color: #60a5fa; }
+    .profile-right {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      background: #131826;
+      border: 1px solid #2d3748;
+      padding: 14px 16px;
+      border-radius: 4px;
+      overflow-y: auto;
+      font-size: 12px;
+    }
+    .profile-content-preview {
+      flex: 1;
+      min-height: 120px;
+      background: #0b0f19;
+      border: 1px solid #1e293b;
+      border-radius: 4px;
+      padding: 10px;
+      font-size: 12px;
+      color: #94a3b8;
+      overflow-y: auto;
+    }
+    .sys-keys-box {
+      border-top: 1px solid #2d3748;
+      padding-top: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .sys-key-line { display: flex; align-items: center; justify-content: space-between; }
+    .key-btn-record {
+      background: #1e293b;
+      border: 1px solid #475569;
+      color: #60a5fa;
+      font-weight: bold;
+      padding: 4px 14px;
+      border-radius: 4px;
+      cursor: pointer;
+      min-width: 70px;
+      text-align: center;
+    }
+    .key-btn-record:hover { background: #2563eb; color: white; }
+
+    /* 編輯計時組 */
+    #view-edit {
+      display: none;
+      flex-direction: column;
+      height: 100%;
+      background: #181f30;
+      border: 1px solid #334155;
+      border-radius: 6px;
+    }
+    .edit-body {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 210px 1fr;
+      gap: 12px;
+      padding: 10px 14px;
+      overflow: hidden;
+    }
+    .edit-left { display: flex; flex-direction: column; gap: 6px; }
+    .edit-list-box {
+      flex: 1;
+      background: #0f172a;
+      border: 1px solid #334155;
+      overflow-y: auto;
+      border-radius: 4px;
+    }
+    .edit-item {
+      padding: 7px 10px;
+      font-size: 12px;
+      border-bottom: 1px solid #1e293b;
+      cursor: pointer;
+    }
+    .edit-item.active { background: #4f46e5; color: white; font-weight: bold; }
+    .edit-right {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      background: #131826;
+      border: 1px solid #2d3748;
+      padding: 12px 16px;
+      border-radius: 4px;
+      overflow-y: auto;
+      font-size: 12px;
+    }
+    .section-title {
+      font-size: 12px;
+      font-weight: bold;
+      color: #93c5fd;
+      border-bottom: 1px solid #2d3748;
+      padding-bottom: 4px;
+      margin-top: 6px;
+    }
+    .f-row { display: grid; grid-template-columns: 120px 1fr; align-items: center; gap: 8px; }
+    .radios { display: flex; gap: 14px; align-items: center; }
+    .round2-container { display: none; }
+
+    /* 懸浮窗設定視窗 */
+    #view-hud-config {
+      display: none;
+      flex-direction: column;
+      height: 100%;
+      background: #181e2e;
+      border: 1px solid #334155;
+      border-radius: 6px;
+    }
+    .hud-cfg-body {
+      flex: 1;
+      padding: 16px 20px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      font-size: 13px;
+    }
+    .cfg-input-row { display: flex; align-items: center; justify-content: space-between; }
+    .cfg-input-row input[type="number"] { width: 140px; text-align: left; }
+    .cfg-check-row { display: flex; align-items: center; justify-content: space-between; padding: 2px 0; }
+    .cfg-check-row input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; }
+    .cfg-color-row { display: flex; align-items: center; justify-content: space-between; padding: 3px 0; }
+    .color-block-wrap { display: flex; align-items: center; gap: 8px; }
+    .color-picker-box {
+      width: 44px;
+      height: 24px;
+      border: 1px solid #475569;
+      border-radius: 3px;
+      cursor: pointer;
+      padding: 0;
+      background: none;
+    }
+    .color-code-text { width: 85px; font-family: monospace; }
+    .cfg-divider { border-bottom: 1px solid #28334e; margin: 4px 0; }
+
+    /* 懸浮窗視窗主體 (全透明背景) */
+    #view-floating {
+      display: none;
+      flex-direction: column;
+      background: transparent !important;
+      border: none !important;
+      border-radius: 0;
+      padding: 0;
+      width: fit-content;
+      min-width: 80px;
+      box-shadow: none !important;
+    }
+    .hud-control-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .hud-btn-gear {
+      cursor: pointer;
+      font-size: 16px;
+      color: #cbd5e1;
+      line-height: 1;
+      width: 26px;
+      height: 26px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(15, 23, 42, 0.75);
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      border-radius: 6px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+      transition: all 0.15s ease;
+      -webkit-app-region: no-drag;
+    }
+    .hud-btn-gear:hover {
+      color: #60a5fa;
+      background: rgba(30, 41, 59, 0.9);
+      border-color: rgba(96, 165, 250, 0.7);
+      transform: rotate(30deg);
+    }
+    .hud-status-tag {
+      background: #14532d;
+      border: 1px solid #16a34a;
+      color: #4ade80;
+      font-size: 11px;
+      padding: 1px 6px;
+      border-radius: 3px;
+      cursor: pointer;
+      font-weight: 500;
+      -webkit-app-region: no-drag;
+    }
+    .hud-status-tag.disabled {
+      background: #7f1d1d;
+      border-color: #ef4444;
+      color: #f87171;
+    }
+    .hud-cards-row {
+      display: flex;
+      align-items: flex-end;
+    }
+    .hud-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .hud-card-time {
+      font-size: 13px;
+      font-weight: 900;
+      margin-bottom: 3px;
+      letter-spacing: 0.5px;
+      padding: 1px 4px;
+      border-radius: 2px;
+      -webkit-app-region: no-drag;
+    }
+    .hud-card-time.active { color: #38bdf8 !important; text-shadow: 0 0 6px rgba(56, 189, 248, 0.8); }
+
+    /* 按住圖片即可拖動整窗 */
+    .hud-img-box {
+      background: #0b0f19;
+      border: 1px solid #1e293b;
+      border-radius: 4px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      cursor: move;
+      -webkit-app-region: drag;
+    }
+    .hud-img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      pointer-events: none;
+    }
+    .hud-cooldown-mask {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 0%;
+      background: rgba(0, 0, 0, 0.6);
+      pointer-events: none;
+      transition: height 0.2s linear;
+    }
+    .hud-card-name {
+      font-size: 11px;
+      padding: 1px 4px;
+      border-radius: 2px;
+      margin-top: 3px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      -webkit-app-region: no-drag;
+    }
+
+    .resize-handle {
+      position: absolute;
+      right: 4px;
+      bottom: 4px;
+      width: 12px;
+      height: 12px;
+      cursor: nwse-resize;
+      -webkit-app-region: no-drag;
+      pointer-events: none;
+      z-index: 9999;
+      border-right: 2px solid rgba(148, 163, 184, 0.5);
+      border-bottom: 2px solid rgba(148, 163, 184, 0.5);
+    }
+
+    /* 倒數動態警示動畫 */
+    @keyframes blink-yellow {
+      0%, 100% { opacity: 1; color: #facc15; text-shadow: 0 0 8px rgba(250, 204, 21, 0.8); }
+      50% { opacity: 0.3; color: #ca8a04; text-shadow: none; }
+    }
+
+    @keyframes blink-red {
+      0%, 100% { opacity: 1; color: #ef4444; text-shadow: 0 0 10px rgba(239, 68, 68, 0.9); }
+      50% { opacity: 0.2; color: #991b1b; text-shadow: none; }
+    }
+
+    .timer-blink-yellow {
+      animation: blink-yellow 1s infinite ease-in-out !important;
+    }
+
+    .timer-blink-red {
+      animation: blink-red 0.4s infinite ease-in-out !important;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 1. 主視窗 (首頁) -->
+  <div id="view-main">
+    <div class="top-bar draggable" style="position:relative;">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="font-size:12px; font-weight:bold; color:#94a3b8;">倒數計時器_plus</span>
+        <div class="os-switch-box non-draggable">
+          <button class="os-btn active" id="btnOsWin">Windows</button>
+          <button class="os-btn" id="btnOsMac">macOS</button>
+        </div>
+      </div>
+      <span class="main-center-title" id="curProfileMainTitle">設定檔：困拉計時5（全部）</span>
+      <span id="mainStatusBadge" style="font-size:11px; color:#4ade80; font-weight:bold;">● 啟用中</span>
+    </div>
+
+    <div class="toolbar non-draggable">
+      <button class="btn btn-green" id="btnToggleEnable">✔ 啟用</button>
+      <button class="btn btn-sub" id="btnOpenProfiles">💾 設定檔</button>
+      <button class="btn btn-purple" id="btnOpenEdit">⚙ 編輯計時</button>
+      <button class="btn btn-sub" id="btnOpenHudConfig">🖥 懸浮窗設定</button>
+      
+      <div style="display:flex; align-items:center; gap:4px; margin-left:2px; font-size:12px; color:#cbd5e1;">
+        <span>延遲：</span>
+        <select id="selDelayCompensation" style="padding:3px 6px; font-size:12px; border-color:#475569;">
+          <option value="0.0">標準 (無延遲)</option>
+          <option value="0.1">低延遲 (0.1s)</option>
+          <option value="0.3" selected>高延遲 (0.3s)</option>
+        </select>
+      </div>
+
+      <button class="btn btn-blue" id="btnGoFloat" style="margin-left:auto;">⇄ 切換懸浮模式</button>
+    </div>
+
+    <div class="main-table non-draggable">
+      <div class="table-header">
+        <span>計時名稱</span>
+        <span>快捷鍵</span>
+        <span>倒數時間(秒)</span>
+        <span>模式</span>
+      </div>
+      <div id="mainTimerList"></div>
+    </div>
+  </div>
+
+  <!-- 2. 設定檔管理視窗 -->
+  <div id="view-profiles">
+    <div class="top-bar draggable">
+      <span style="font-size:12px; font-weight:bold;">💾 設定檔管理</span>
+    </div>
+
+    <div class="profile-body non-draggable">
+      <div class="profile-left">
+        <span style="font-size:12px; color:#94a3b8; font-weight:bold;">設定檔列表</span>
+        <div class="profile-slots-box" id="profileSlotsContainer"></div>
+        <button class="btn btn-green" id="btnApplySlot">✔ 套用</button>
+        <button class="btn btn-purple" id="btnAddProfile">➕ 新增設定檔</button>
+        <div style="display:flex; gap:6px;">
+          <button class="btn" id="btnMoveUpProfile" style="flex:1;">⬆ 上移</button>
+          <button class="btn" id="btnMoveDownProfile" style="flex:1;">⬇ 下移</button>
+        </div>
+        <div style="display:flex; gap:6px;">
+          <button class="btn btn-sub" id="btnImportSlot" style="flex:1;">📥 匯入</button>
+          <button class="btn btn-sub" id="btnExportSlot" style="flex:1;">📤 匯出</button>
+        </div>
+        <button class="btn btn-red" id="btnDeleteProfile">🗑 刪除設定檔</button>
+        <button class="btn btn-blue" id="btnBackFromProfiles" style="margin-top:2px;">返回主畫面</button>
+      </div>
+
+      <div class="profile-right">
+        <span style="font-weight:bold; color:#93c5fd;">設定檔詳情</span>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <label>設定檔名稱：</label>
+          <input type="text" id="inputProfileName" style="flex:1;">
+          <button class="btn btn-blue" id="btnSaveProfileName">✎ 編輯名稱</button>
+        </div>
+        <div class="profile-content-preview" id="profileDetailPreview">( 此專案無任何計時組 )</div>
+        <div class="sys-keys-box">
+          <span style="font-size:12px; color:#94a3b8; font-weight:bold;">程序快捷鍵設定（非啟動計時器）</span>
+          <div class="sys-key-line">
+            <span>全部暫停：</span>
+            <div style="display:flex; gap:6px;">
+              <button class="key-btn-record" id="btnSysKey_pause">F6</button>
+              <button class="btn btn-red" id="btnClearSys_pause">✕</button>
+            </div>
+          </div>
+          <div class="sys-key-line">
+            <span>啟用/停用：</span>
+            <div style="display:flex; gap:6px;">
+              <button class="key-btn-record" id="btnSysKey_toggle">F7</button>
+              <button class="btn btn-red" id="btnClearSys_toggle">✕</button>
+            </div>
+          </div>
+          <div class="sys-key-line">
+            <span>懸浮框開關：</span>
+            <div style="display:flex; gap:6px;">
+              <button class="key-btn-record" id="btnSysKey_hud">F8</button>
+              <button class="btn btn-red" id="btnClearSys_hud">✕</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. 編輯計時視窗 -->
+  <div id="view-edit">
+    <div class="top-bar draggable">
+      <span id="editTopProfileTitle" style="font-size:12px; font-weight:bold;">🗎 設定檔：困拉計時5（全部）</span>
+    </div>
+    <div class="edit-body non-draggable">
+      <div class="edit-left">
+        <span style="font-size:12px; color:#94a3b8; font-weight:bold;">計時組列表</span>
+        <div class="edit-list-box" id="editTimerList"></div>
+        <button class="btn btn-purple" id="btnSaveAllTimers">💾 全部儲存</button>
+        <button class="btn btn-green" id="btnAddTimer">➕ 新增</button>
+        <button class="btn" id="btnMoveUp">⬆ 上移</button>
+        <button class="btn" id="btnMoveDown">⬇ 下移</button>
+        <button class="btn btn-red" id="btnDeleteTimer">🗑 刪除</button>
+      </div>
+
+      <div class="edit-right">
+        <span class="section-title">計時組設定</span>
+        <div class="f-row">
+          <label>計時名稱：</label>
+          <input type="text" id="cfgName" style="width: 100%;">
+        </div>
+        <div class="f-row">
+          <label>快捷鍵：</label>
+          <div style="display:flex; gap:6px;">
+            <input type="text" id="cfgKeyName" readonly style="width:110px;">
+            <button class="btn btn-blue" id="btnRecordKey">點擊設定</button>
+            <button class="btn btn-red" id="btnClearKey">✕</button>
+          </div>
+        </div>
+        <div class="f-row">
+          <label>倒數模式：</label>
+          <div class="radios">
+            <label><input type="radio" name="cfgMode" value="loop"> 自動循環</label>
+            <label><input type="radio" name="cfgMode" value="once"> 倒數後停止</label>
+            <label><input type="radio" name="cfgMode" value="dual"> 雙回合切換</label>
+          </div>
+        </div>
+        <div class="f-row">
+          <label>計時方向：</label>
+          <div class="radios">
+            <label><input type="radio" name="cfgDirection" value="down" checked> 倒數</label>
+            <label><input type="radio" name="cfgDirection" value="up"> 正數</label>
+          </div>
+        </div>
+        <div class="f-row">
+          <label>倒數時間 ( 秒 )：</label>
+          <input type="number" id="cfgSec1" step="any" inputmode="decimal" style="width:130px;" onwheel="this.blur()">
+        </div>
+        <div class="f-row round2-container" id="rowSec2">
+          <label>回合二時間 ( 秒 )：</label>
+          <input type="number" id="cfgSec2" step="any" inputmode="decimal" style="width:130px;" onwheel="this.blur()">
+        </div>
+        <div class="f-row">
+          <label>快捷鍵功能：</label>
+          <div class="radios">
+            <label><input type="radio" name="cfgHotkeyAction" value="restart" checked> 重置並開始</label>
+            <label><input type="radio" name="cfgHotkeyAction" value="toggle"> 開關 ( 關閉會重置 )</label>
+          </div>
+        </div>
+        <div class="f-row">
+          <label>圖示效果模式：</label>
+          <div class="radios">
+            <label><input type="radio" name="cfgIconMode" value="default"> 預設</label>
+            <label><input type="radio" name="cfgIconMode" value="cooldown" checked> 冷卻模式</label>
+            <label><input type="radio" name="cfgIconMode" value="raw"> 僅用原圖</label>
+          </div>
+        </div>
+
+        <span class="section-title">圖片配置</span>
+        <div class="f-row">
+          <label>圖片 ( 回合一 )：</label>
+          <div style="display:flex; gap:6px; width:100%;">
+            <input type="text" id="cfgImg1" style="flex:1;" placeholder="點選瀏覽選取圖檔 (僅顯示檔名)">
+            <button class="btn btn-sub" onclick="selectImgFile(1)">🔎 瀏覽</button>
+          </div>
+        </div>
+        <div class="f-row round2-container" id="rowImg2">
+          <label>圖片 ( 回合二 )：</label>
+          <div style="display:flex; gap:6px; width:100%;">
+            <input type="text" id="cfgImg2" style="flex:1;" placeholder="點選瀏覽選取圖檔 (僅顯示檔名)">
+            <button class="btn btn-sub" onclick="selectImgFile(2)">🔎 瀏覽</button>
+          </div>
+        </div>
+
+        <span class="section-title">音效 ( 回合一 ) ：</span>
+        <div class="f-row">
+          <label>音效管理：</label>
+          <div style="display:flex; gap:6px; width:100%;">
+            <input type="text" id="cfgVoiceText1" style="flex:1;" placeholder="選取音效檔案 (mp3/wav/ogg)">
+            <button class="btn btn-sub" onclick="selectAudioFile(1)">🔎 瀏覽</button>
+            <button class="btn btn-blue" onclick="testAudioPlay(1)">▶ 測試</button>
+          </div>
+        </div>
+        <div class="f-row">
+          <label>播放方式：</label>
+          <div class="radios">
+            <label><input type="radio" name="cfgPlayMode1" value="single" checked> 單次播放</label>
+            <label><input type="radio" name="cfgPlayMode1" value="multi"> 分段播放</label>
+          </div>
+        </div>
+        <div class="f-row">
+          <label>提前幾秒：</label>
+          <input type="number" id="cfgVoiceAdvance1" step="any" inputmode="decimal" style="width:130px;" value="2" onwheel="this.blur()">
+        </div>
+        <div class="f-row">
+          <label>分段次數：</label>
+          <input type="number" id="cfgVoiceSteps1" step="any" inputmode="numeric" style="width:130px;" value="1" onwheel="this.blur()">
+        </div>
+
+        <div class="round2-container" id="boxVoice2">
+          <span class="section-title">音效 ( 回合二 ) ：</span>
+          <div class="f-row">
+            <label>音效管理：</label>
+            <div style="display:flex; gap:6px; width:100%;">
+              <input type="text" id="cfgVoiceText2" style="flex:1;" placeholder="選取音效檔案 (mp3/wav/ogg)">
+              <button class="btn btn-sub" onclick="selectAudioFile(2)">🔎 瀏覽</button>
+              <button class="btn btn-blue" onclick="testAudioPlay(2)">▶ 測試</button>
+            </div>
+          </div>
+          <div class="f-row">
+            <label>播放方式：</label>
+            <div class="radios">
+              <label><input type="radio" name="cfgPlayMode2" value="single" checked> 單次播放</label>
+              <label><input type="radio" name="cfgPlayMode2" value="multi"> 分段播放</label>
+            </div>
+          </div>
+          <div class="f-row">
+            <label>提前幾秒：</label>
+            <input type="number" id="cfgVoiceAdvance2" step="any" inputmode="decimal" style="width:130px;" value="2" onwheel="this.blur()">
+          </div>
+          <div class="f-row">
+            <label>分段次數：</label>
+            <input type="number" id="cfgVoiceSteps2" step="any" inputmode="numeric" style="width:130px;" value="1" onwheel="this.blur()">
+          </div>
+        </div>
+
+        <div style="display:flex; gap:10px; margin-top: 12px;">
+          <button class="btn btn-coral" id="btnSaveSingleTimer" style="flex:1;">💾 儲存該計時</button>
+          <button class="btn btn-blue" id="btnCancelEdit" style="flex:1;">取消</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. 懸浮窗設定視窗 -->
+  <div id="view-hud-config">
+    <div class="top-bar draggable">
+      <span style="font-size:12px; font-weight:bold;">🖥 懸浮窗設定</span>
+    </div>
+
+    <div class="hud-cfg-body non-draggable">
+      <div class="cfg-input-row">
+        <label>X：</label>
+        <input type="number" id="hcfg_x" value="1203">
+      </div>
+      <div class="cfg-input-row">
+        <label>Y：</label>
+        <input type="number" id="hcfg_y" value="418">
+      </div>
+      <div class="cfg-input-row">
+        <label>圖示大小 ( 像素 )：</label>
+        <input type="number" id="hcfg_size" value="48">
+      </div>
+      <div class="cfg-input-row">
+        <label>圖示間距 ( 像素 )：</label>
+        <input type="number" id="hcfg_gap" value="1">
+      </div>
+
+      <div class="cfg-input-row" style="align-items:flex-start; margin-top: 2px;">
+        <label style="margin-top:4px;">懸浮框透明度：</label>
+        <div style="display:flex; flex-direction:column; align-items:flex-end; width:140px;">
+          <span id="hcfg_opacity_val" style="font-size:12px; color:#cbd5e1; margin-bottom:2px;">1.00</span>
+          <input type="range" id="hcfg_opacity" min="0.1" max="1" step="0.05" value="1.00" style="width:100%;">
+        </div>
+      </div>
+
+      <div class="cfg-divider"></div>
+
+      <div class="cfg-check-row">
+        <label for="hcfg_showGear">顯示設定齒輪：</label>
+        <input type="checkbox" id="hcfg_showGear" checked>
+      </div>
+      <div class="cfg-check-row">
+        <label for="hcfg_showBg">顯示背景底色：</label>
+        <input type="checkbox" id="hcfg_showBg">
+      </div>
+      <div class="cfg-check-row">
+        <label for="hcfg_showTimeBg">顯示數字背景：</label>
+        <input type="checkbox" id="hcfg_showTimeBg" checked>
+      </div>
+      <div class="cfg-check-row">
+        <label for="hcfg_showNameBg">顯示名稱背景：</label>
+        <input type="checkbox" id="hcfg_showNameBg" checked>
+      </div>
+      <div class="cfg-check-row">
+        <label for="hcfg_hideUnused">隱藏未使用倒數：</label>
+        <input type="checkbox" id="hcfg_hideUnused">
+      </div>
+      <div class="cfg-check-row">
+        <label for="hcfg_showImg">顯示圖片：</label>
+        <input type="checkbox" id="hcfg_showImg" checked>
+      </div>
+      <div class="cfg-check-row">
+        <label for="hcfg_showStatus">顯示停用啟用狀態：</label>
+        <input type="checkbox" id="hcfg_showStatus" checked>
+      </div>
+
+      <div class="cfg-divider"></div>
+
+      <div class="cfg-color-row">
+        <label>背景顏色：</label>
+        <div class="color-block-wrap">
+          <input type="color" class="color-picker-box" id="hcfg_color_bg" value="#1a1a2e">
+          <input type="text" class="color-code-text" id="hcfg_text_bg" value="#1a1a2e">
+        </div>
+      </div>
+      <div class="cfg-color-row">
+        <label>數字背景顏色：</label>
+        <div class="color-block-wrap">
+          <input type="color" class="color-picker-box" id="hcfg_color_timebg" value="#1a1a2e">
+          <input type="text" class="color-code-text" id="hcfg_text_timebg" value="#1a1a2e">
+        </div>
+      </div>
+      <div class="cfg-color-row">
+        <label>名稱背景顏色：</label>
+        <div class="color-block-wrap">
+          <input type="color" class="color-picker-box" id="hcfg_color_namebg" value="#1a1a2e">
+          <input type="text" class="color-code-text" id="hcfg_text_namebg" value="#1a1a2e">
+        </div>
+      </div>
+      <div class="cfg-color-row">
+        <label>數字顏色：</label>
+        <div class="color-block-wrap">
+          <input type="color" class="color-picker-box" id="hcfg_color_time" value="#ffffff">
+          <input type="text" class="color-code-text" id="hcfg_text_time" value="#ffffff">
+        </div>
+      </div>
+      <div class="cfg-color-row">
+        <label>名稱顏色：</label>
+        <div class="color-block-wrap">
+          <input type="color" class="color-picker-box" id="hcfg_color_name" value="#ffffff">
+          <input type="text" class="color-code-text" id="hcfg_text_name" value="#ffffff">
+        </div>
+      </div>
+
+      <div class="cfg-divider"></div>
+
+      <div class="cfg-input-row">
+        <label>名稱顯示位置：</label>
+        <select id="hcfg_namePos" style="width:140px;">
+          <option value="bottom">圖片下方 ( 外 )</option>
+          <option value="top">圖片上方 ( 外 )</option>
+          <option value="none">隱藏</option>
+        </select>
+      </div>
+      <div class="cfg-input-row">
+        <label>名稱對齊方式：</label>
+        <select id="hcfg_nameAlign" style="width:140px;">
+          <option value="center">置中</option>
+          <option value="left">靠左</option>
+          <option value="right">靠右</option>
+        </select>
+      </div>
+
+      <div style="display:flex; gap:10px; margin-top: 14px;">
+        <button class="btn btn-green" id="btnSaveHudConfig" style="flex:1;">💾 儲存</button>
+        <button class="btn btn-purple" id="btnApplyHudConfig" style="flex:1;">✔ 套用</button>
+        <button class="btn btn-sub" id="btnCloseHudConfig" style="flex:1;">關閉</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. HUD 懸浮窗 (全透明底座，按住圖片即可拖曳) -->
+  <div id="view-floating">
+    <div class="hud-control-bar" id="hudControlBar">
+      <button class="hud-btn-gear non-draggable" id="btnHudGear" title="回到首頁">⚙</button>
+      <span class="hud-status-tag non-draggable" id="hudStatusTag">☑ 啟用</span>
+    </div>
+    <div class="hud-cards-row non-draggable" id="hudCardsContainer"></div>
+  </div>
+
+  <div class="resize-handle" id="globalResizeHandle"></div>
+
+  <script>
+    const { ipcRenderer } = require('electron');
+    const path = require('path');
+    const os = require('os');
+
+    const WIN_ASSET_DIR = "D:\\m6232set\\Desktop\\軟體安裝檔\\Countdown_Timer_plus_v1.4.1\\Countdown_Timer_plus_v1.4.1\\png_type";
+    const MAC_ASSET_DIR = path.join(os.homedir(), 'Documents', 'CountdownTimer_Assets', 'png_type');
+
+    let currentOS = 'windows';
+    let delayCompensationSec = parseFloat(localStorage.getItem('user_delay_compensation')) || 0.3;
+
+    function getActiveAssetDir() {
+      return (currentOS === 'macos') ? MAC_ASSET_DIR : WIN_ASSET_DIR;
+    }
+
+    function resolveFilePath(fileName, defaultExt = '.png') {
+      if (!fileName) return '';
+      if (fileName.includes(':') || fileName.startsWith('/') || fileName.startsWith('file:') || fileName.startsWith('http')) {
+        return fileName;
+      }
+      let full = path.join(getActiveAssetDir(), fileName);
+      if (defaultExt && !full.includes('.')) full += defaultExt;
+      return full;
+    }
+
+    function getKeyFriendlyName(keycode) {
+      const numpadMap = {
+        82: 'Num0', 79: 'Num1', 80: 'Num2', 81: 'Num3', 75: 'Num4',
+        76: 'Num5', 77: 'Num6', 71: 'Num7', 72: 'Num8', 73: 'Num9',
+        55: 'Num*', 78: 'Num+', 74: 'Num-', 83: 'Num.', 3637: 'Num/'
+      };
+      if (numpadMap[keycode]) return numpadMap[keycode];
+
+      const fKeyMap = {
+        59: 'F1', 60: 'F2', 61: 'F3', 62: 'F4',
+        63: 'F5', 64: 'F6', 65: 'F7', 66: 'F8',
+        67: 'F9', 68: 'F10', 87: 'F11', 88: 'F12'
+      };
+      if (fKeyMap[keycode]) return fKeyMap[keycode];
+
+      const mainNumMap = { 11: '0', 2: '1', 3: '2', 4: '3', 5: '4', 6: '5', 7: '6', 8: '7', 9: '8', 10: '9' };
+      if (mainNumMap[keycode]) return mainNumMap[keycode];
+
+      const letterMap = {
+        30: 'A', 48: 'B', 46: 'C', 32: 'D', 18: 'E', 33: 'F', 34: 'G', 35: 'H',
+        23: 'I', 36: 'J', 37: 'K', 38: 'L', 50: 'M', 49: 'N', 24: 'O', 25: 'P',
+        16: 'Q', 19: 'R', 31: 'S', 20: 'T', 22: 'U', 47: 'V', 17: 'W', 45: 'X',
+        21: 'Y', 44: 'Z'
+      };
+      if (letterMap[keycode]) return letterMap[keycode];
+
+      const specialMap = { 1: 'Esc', 57: 'Space', 28: 'Enter', 14: 'Backspace', 15: 'Tab', 42: 'Shift', 29: 'Ctrl', 56: 'Alt' };
+      if (specialMap[keycode]) return specialMap[keycode];
+
+      return `Key_${keycode}`;
+    }
+
+    const defaultHudConfig = {
+      x: 1203,
+      y: 418,
+      size: 48,
+      gap: 1,
+      opacity: 1.00,
+      showGear: true,
+      showBg: false,
+      showTimeBg: true,
+      showNameBg: true,
+      hideUnused: false,
+      showImg: true,
+      showStatus: true,
+      colorBg: '#1a1a2e',
+      colorTimeBg: '#1a1a2e',
+      colorNameBg: '#1a1a2e',
+      colorTime: '#ffffff',
+      colorName: '#ffffff',
+      namePos: 'bottom',
+      nameAlign: 'center'
+    };
+
+    let hudConfig = JSON.parse(localStorage.getItem('hud_config_v1')) || defaultHudConfig;
+
+    const initialProfiles = [
+      {
+        id: 1,
+        name: "困拉計時5（全部）",
+        timers: [
+          { id: 1, name: "69%困拉黑水", keyName: "Num1", keycode: 79, mode: "loop", direction: "down", sec1: 70.0, sec2: 0, hotkeyAction: "restart", iconMode: "cooldown", img1: "Papulatus(Hard)_Poison pit.png", img2: "", voiceText1: "blackwater.mp3", voiceAdvance1: 2, voiceSteps1: 1, voiceText2: "", voiceAdvance2: 2, voiceSteps2: 1 },
+          { id: 2, name: "84%小怪計時", keyName: "Num2", keycode: 80, mode: "dual", direction: "down", sec1: 45.0, sec2: 10.0, hotkeyAction: "restart", iconMode: "cooldown", img1: "Papulatus(Hard)_little monster disapp.png", img2: "Papulatus(Hard)_little monster.png", voiceText1: "monster_appear.mp3", voiceAdvance1: 3, voiceSteps1: 1, voiceText2: "monster_disappear.mp3", voiceAdvance2: 2, voiceSteps2: 1 },
+          { id: 3, name: "分身技能", keyName: "Num3", keycode: 81, mode: "loop", direction: "down", sec1: 30.0, sec2: 0, hotkeyAction: "restart", iconMode: "cooldown", img1: "", img2: "", voiceText1: "", voiceAdvance1: 2, voiceSteps1: 1, voiceText2: "", voiceAdvance2: 2, voiceSteps2: 1 },
+          { id: 4, name: "84%反盾", keyName: "Num4", keycode: 75, mode: "loop", direction: "down", sec1: 80.0, sec2: 0, hotkeyAction: "restart", iconMode: "cooldown", img1: "", img2: "", voiceText1: "", voiceAdvance1: 3, voiceSteps1: 1, voiceText2: "", voiceAdvance2: 2, voiceSteps2: 1 }
+        ]
+      },
+      {
+        id: 2,
+        name: "炎計時1【預設】",
+        timers: [
+          { id: 101, name: "黑水計時", keyName: "Num1", keycode: 79, mode: "loop", direction: "down", sec1: 60.0, sec2: 0, hotkeyAction: "restart", iconMode: "cooldown", img1: "Papulatus(Hard)_Poison pit.png", img2: "", voiceText1: "blackwater.mp3", voiceAdvance1: 2, voiceSteps1: 1, voiceText2: "", voiceAdvance2: 2, voiceSteps2: 1 }
+        ]
+      }
+    ];
+
+    const defaultSysKeys = {
+      pause: { name: "F6", keycode: 64 },
+      toggle: { name: "F7", keycode: 65 },
+      hud: { name: "F8", keycode: 66 }
+    };
+
+    let rawProfiles = JSON.parse(localStorage.getItem('profiles_v21')) || initialProfiles;
+    let profiles = rawProfiles.filter(p => p.name !== '( 空 )' && p.name !== '');
+    if (profiles.length === 0) profiles = initialProfiles;
+
+    let activeProfileId = parseInt(localStorage.getItem('active_pid_v21')) || profiles[0].id;
+    let selectedSlotId = activeProfileId;
+    let sysKeys = JSON.parse(localStorage.getItem('sys_keys_v21')) || defaultSysKeys;
+
+    let selectedTimerId = null;
+    let isRecordingKey = false;
+    let recordingSysAction = null;
+    let isSystemEnabled = true;
+    let intervals = {};
+    let currentTestingAudio = null;
+
+    function saveAll() {
+      localStorage.setItem('profiles_v21', JSON.stringify(profiles));
+      localStorage.setItem('active_pid_v21', activeProfileId.toString());
+      localStorage.setItem('sys_keys_v21', JSON.stringify(sysKeys));
+      localStorage.setItem('hud_config_v1', JSON.stringify(hudConfig));
+      localStorage.setItem('user_selected_os', currentOS);
+      localStorage.setItem('user_delay_compensation', delayCompensationSec.toString());
+    }
+
+    function getActiveProfile() {
+      return profiles.find(p => p.id === activeProfileId) || profiles[0];
+    }
+    function getSelectedSlot() {
+      return profiles.find(p => p.id === selectedSlotId) || profiles[0];
+    }
+
+    function updateOsUI(osType) {
+      currentOS = osType;
+      document.getElementById('btnOsWin').classList.toggle('active', osType === 'windows');
+      document.getElementById('btnOsMac').classList.toggle('active', osType === 'macos');
+      renderMain();
+      renderHudCards();
+    }
+
+    document.getElementById('btnOsWin').onclick = () => {
+      ipcRenderer.send('switch-os', 'windows');
+      updateOsUI('windows');
+      saveAll();
+    };
+    document.getElementById('btnOsMac').onclick = () => {
+      ipcRenderer.send('switch-os', 'macos');
+      updateOsUI('macos');
+      saveAll();
+    };
+
+    document.getElementById('selDelayCompensation').value = delayCompensationSec.toFixed(1);
+    document.getElementById('selDelayCompensation').addEventListener('change', (e) => {
+      delayCompensationSec = parseFloat(e.target.value);
+      saveAll();
+    });
+
+    ipcRenderer.on('os-changed', (e, osType) => updateOsUI(osType));
+
+    function renderMain() {
+      const curP = getActiveProfile();
+      document.getElementById('curProfileMainTitle').innerText = `設定檔：${curP.name}`;
+      document.getElementById('editTopProfileTitle').innerText = `🗎 設定檔：${curP.name}`;
+
+      const mainEl = document.getElementById('mainTimerList');
+      mainEl.innerHTML = '';
+
+      if (!curP.timers || curP.timers.length === 0) {
+        mainEl.innerHTML = '<div style="padding: 24px; text-align: center; color: #64748b;">( 當前設定檔無任何計時組，請至「編輯計時」新增 )</div>';
+        return;
+      }
+
+      curP.timers.forEach(t => {
+        const mRow = document.createElement('div');
+        mRow.className = 'table-row';
+        mRow.innerHTML = `
+          <span>${t.name}</span>
+          <span style="color:#94a3b8">${t.keyName}</span>
+          <span class="val-display timer-val-${t.id}">${t.sec1}</span>
+          <span style="color:#94a3b8">${t.mode === 'loop' ? '自動循環' : (t.mode === 'once' ? '倒數後停止' : '雙回合切換')}</span>
+        `;
+        mainEl.appendChild(mRow);
+      });
+    }
+
+    function renderHudCards() {
+      const hudView = document.getElementById('view-floating');
+      const container = document.getElementById('hudCardsContainer');
+      container.innerHTML = '';
+      const curP = getActiveProfile();
+
+      hudView.style.background = hudConfig.showBg ? hudConfig.colorBg : 'transparent';
+      container.style.gap = `${hudConfig.gap}px`;
+
+      document.getElementById('btnHudGear').style.display = hudConfig.showGear ? 'inline-flex' : 'none';
+      document.getElementById('hudStatusTag').style.display = hudConfig.showStatus ? 'inline-block' : 'none';
+      document.getElementById('hudControlBar').style.display = (hudConfig.showGear || hudConfig.showStatus) ? 'flex' : 'none';
+
+      if (!curP.timers) return;
+
+      curP.timers.forEach(t => {
+        const fullImgPath = resolveFilePath(t.img1, '.png');
+        const card = document.createElement('div');
+        card.className = 'hud-card';
+        card.id = `hud-card-${t.id}`;
+
+        if (hudConfig.hideUnused && !intervals[t.id]) {
+          card.style.display = 'none';
+        }
+
+        const timeBgStyle = hudConfig.showTimeBg ? `background:${hudConfig.colorTimeBg};` : 'background:transparent;';
+        const timeColorStyle = `color:${hudConfig.colorTime};`;
+        const nameBgStyle = hudConfig.showNameBg ? `background:${hudConfig.colorNameBg};` : 'background:transparent;';
+        const nameColorStyle = `color:${hudConfig.colorName}; text-align:${hudConfig.nameAlign};`;
+
+        const nameDom = (hudConfig.namePos !== 'none') ? `
+          <div class="hud-card-name" style="${nameBgStyle} ${nameColorStyle} max-width:${Math.max(hudConfig.size + 14, 58)}px;" title="${t.name}">${t.name}</div>
+        ` : '';
+
+        const timeDom = `<div class="hud-card-time" id="hud-time-${t.id}" style="${timeBgStyle} ${timeColorStyle}">${intervals[t.id] ? '--' : '--'}</div>`;
+
+        const imgDom = hudConfig.showImg ? `
+          <div class="hud-img-box" style="width:${hudConfig.size}px; height:${hudConfig.size}px;">
+            ${fullImgPath ? `<img src="${fullImgPath}" class="hud-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">` : ''}
+            <div class="hud-img-placeholder" style="${fullImgPath ? 'display:none;' : ''}">${t.name.substring(0, 3)}</div>
+            <div class="hud-cooldown-mask" id="hud-mask-${t.id}"></div>
+          </div>
+        ` : '';
+
+        if (hudConfig.namePos === 'top') {
+          card.innerHTML = `${nameDom}${timeDom}${imgDom}`;
+        } else {
+          card.innerHTML = `${timeDom}${imgDom}${nameDom}`;
+        }
+
+        container.appendChild(card);
+      });
+
+      ipcRenderer.send('set-hud-bounds', {
+        x: hudConfig.x,
+        y: hudConfig.y,
+        opacity: hudConfig.opacity
+      });
+    }
+
+    async function loadHudConfigForm() {
+      const pos = await ipcRenderer.invoke('get-hud-pos');
+      if (pos && pos.length === 2) {
+        hudConfig.x = pos[0];
+        hudConfig.y = pos[1];
+      }
+
+      document.getElementById('hcfg_x').value = hudConfig.x;
+      document.getElementById('hcfg_y').value = hudConfig.y;
+      document.getElementById('hcfg_size').value = hudConfig.size;
+      document.getElementById('hcfg_gap').value = hudConfig.gap;
+
+      document.getElementById('hcfg_opacity').value = hudConfig.opacity;
+      document.getElementById('hcfg_opacity_val').innerText = parseFloat(hudConfig.opacity).toFixed(2);
+
+      document.getElementById('hcfg_showGear').checked = hudConfig.showGear;
+      document.getElementById('hcfg_showBg').checked = hudConfig.showBg;
+      document.getElementById('hcfg_showTimeBg').checked = hudConfig.showTimeBg;
+      document.getElementById('hcfg_showNameBg').checked = hudConfig.showNameBg;
+      document.getElementById('hcfg_hideUnused').checked = hudConfig.hideUnused;
+      document.getElementById('hcfg_showImg').checked = hudConfig.showImg;
+      document.getElementById('hcfg_showStatus').checked = hudConfig.showStatus;
+
+      document.getElementById('hcfg_color_bg').value = hudConfig.colorBg;
+      document.getElementById('hcfg_text_bg').value = hudConfig.colorBg;
+
+      document.getElementById('hcfg_color_timebg').value = hudConfig.colorTimeBg;
+      document.getElementById('hcfg_text_timebg').value = hudConfig.colorTimeBg;
+
+      document.getElementById('hcfg_color_namebg').value = hudConfig.colorNameBg;
+      document.getElementById('hcfg_text_namebg').value = hudConfig.colorNameBg;
+
+      document.getElementById('hcfg_color_time').value = hudConfig.colorTime;
+      document.getElementById('hcfg_text_time').value = hudConfig.colorTime;
+
+      document.getElementById('hcfg_color_name').value = hudConfig.colorName;
+      document.getElementById('hcfg_text_name').value = hudConfig.colorName;
+
+      document.getElementById('hcfg_namePos').value = hudConfig.namePos;
+      document.getElementById('hcfg_nameAlign').value = hudConfig.nameAlign;
+    }
+
+    function readHudConfigFromForm() {
+      hudConfig.x = parseInt(document.getElementById('hcfg_x').value) || 0;
+      hudConfig.y = parseInt(document.getElementById('hcfg_y').value) || 0;
+      hudConfig.size = parseInt(document.getElementById('hcfg_size').value) || 48;
+      hudConfig.gap = parseInt(document.getElementById('hcfg_gap').value) || 0;
+      hudConfig.opacity = parseFloat(document.getElementById('hcfg_opacity').value) || 1;
+
+      hudConfig.showGear = document.getElementById('hcfg_showGear').checked;
+      hudConfig.showBg = document.getElementById('hcfg_showBg').checked;
+      hudConfig.showTimeBg = document.getElementById('hcfg_showTimeBg').checked;
+      hudConfig.showNameBg = document.getElementById('hcfg_showNameBg').checked;
+      hudConfig.hideUnused = document.getElementById('hcfg_hideUnused').checked;
+      hudConfig.showImg = document.getElementById('hcfg_showImg').checked;
+      hudConfig.showStatus = document.getElementById('hcfg_showStatus').checked;
+
+      hudConfig.colorBg = document.getElementById('hcfg_text_bg').value;
+      hudConfig.colorTimeBg = document.getElementById('hcfg_text_timebg').value;
+      hudConfig.colorNameBg = document.getElementById('hcfg_text_namebg').value;
+      hudConfig.colorTime = document.getElementById('hcfg_text_time').value;
+      hudConfig.colorName = document.getElementById('hcfg_text_name').value;
+
+      hudConfig.namePos = document.getElementById('hcfg_namePos').value;
+      hudConfig.nameAlign = document.getElementById('hcfg_nameAlign').value;
+    }
+
+    function bindColorSync(pickerId, textId) {
+      const picker = document.getElementById(pickerId);
+      const text = document.getElementById(textId);
+      picker.addEventListener('input', () => { text.value = picker.value; });
+      text.addEventListener('input', () => { if (text.value.match(/^#[0-9a-f]{6}$/i)) picker.value = text.value; });
+    }
+    bindColorSync('hcfg_color_bg', 'hcfg_text_bg');
+    bindColorSync('hcfg_color_timebg', 'hcfg_text_timebg');
+    bindColorSync('hcfg_color_namebg', 'hcfg_text_namebg');
+    bindColorSync('hcfg_color_time', 'hcfg_text_time');
+    bindColorSync('hcfg_color_name', 'hcfg_text_name');
+
+    document.getElementById('hcfg_opacity').addEventListener('input', (e) => {
+      document.getElementById('hcfg_opacity_val').innerText = parseFloat(e.target.value).toFixed(2);
+    });
+
+    function renderProfilesView() {
+      const container = document.getElementById('profileSlotsContainer');
+      container.innerHTML = '';
+
+      profiles.forEach((p, index) => {
+        const div = document.createElement('div');
+        const isSelected = (p.id === selectedSlotId);
+        const isActive = (p.id === activeProfileId);
+
+        div.className = `slot-item ${isSelected ? 'selected' : ''} ${isActive ? 'active-profile' : ''}`;
+        div.innerText = `[${index + 1}] ${p.name} ${isActive ? '▶' : ''}`;
+        div.onclick = () => {
+          selectedSlotId = p.id;
+          renderProfilesView();
+        };
+        container.appendChild(div);
+      });
+
+      const curSlot = getSelectedSlot();
+      document.getElementById('inputProfileName').value = curSlot ? curSlot.name : '';
+
+      const previewEl = document.getElementById('profileDetailPreview');
+      if (!curSlot || !curSlot.timers || curSlot.timers.length === 0) {
+        previewEl.innerText = '( 此專案無任何計時組 )';
+      } else {
+        previewEl.innerHTML = curSlot.timers.map((t, idx) => `<div>[${idx + 1}] ${t.name} (${t.keyName}) - ${t.sec1}s</div>`).join('');
+      }
+
+      document.getElementById('btnSysKey_pause').innerText = sysKeys.pause.name;
+      document.getElementById('btnSysKey_toggle').innerText = sysKeys.toggle.name;
+      document.getElementById('btnSysKey_hud').innerText = sysKeys.hud.name;
+    }
+
+    function setSystemEnabledState(state) {
+      isSystemEnabled = (state !== undefined) ? state : !isSystemEnabled;
+      const btnMain = document.getElementById('btnToggleEnable');
+      const badgeMain = document.getElementById('mainStatusBadge');
+      const tagHud = document.getElementById('hudStatusTag');
+
+      if (isSystemEnabled) {
+        btnMain.innerText = '✔ 啟用';
+        btnMain.className = 'btn btn-green';
+        badgeMain.innerText = '● 啟用中';
+        badgeMain.style.color = '#4ade80';
+        tagHud.innerText = '☑ 啟用';
+        tagHud.classList.remove('disabled');
+      } else {
+        btnMain.innerText = '✖ 已停用';
+        btnMain.className = 'btn btn-green off';
+        badgeMain.innerText = '○ 已停用';
+        badgeMain.style.color = '#f87171';
+        tagHud.innerText = '☒ 停用';
+        tagHud.classList.add('disabled');
+        resetAllTimers();
+      }
+    }
+
+    function resetAllTimers() {
+      const curP = getActiveProfile();
+      if (!curP.timers) return;
+
+      curP.timers.forEach(t => {
+        if (intervals[t.id]) {
+          clearInterval(intervals[t.id]);
+          delete intervals[t.id];
+        }
+        document.querySelectorAll(`.timer-val-${t.id}`).forEach(el => {
+          el.innerText = t.sec1;
+          el.classList.remove('active', 'timer-blink-yellow', 'timer-blink-red');
+        });
+        const hudTimeEl = document.getElementById(`hud-time-${t.id}`);
+        const hudMaskEl = document.getElementById(`hud-mask-${t.id}`);
+        const hudCard = document.getElementById(`hud-card-${t.id}`);
+
+        if (hudTimeEl) {
+          hudTimeEl.innerText = '--';
+          hudTimeEl.classList.remove('active', 'timer-blink-yellow', 'timer-blink-red');
+        }
+        if (hudMaskEl) hudMaskEl.style.height = '0%';
+        if (hudConfig.hideUnused && hudCard) hudCard.style.display = 'none';
+      });
+    }
+
+    function playAudioFile(fileName) {
+      if (!fileName) return;
+      const fullPath = resolveFilePath(fileName, '');
+      try {
+        if (currentTestingAudio) {
+          currentTestingAudio.pause();
+          currentTestingAudio.currentTime = 0;
+        }
+        currentTestingAudio = new Audio(fullPath);
+        currentTestingAudio.loop = false;
+        currentTestingAudio.play().catch(e => console.warn("音檔播放失敗:", fullPath, e));
+      } catch (e) {
+        console.warn(e);
+      }
+    }
+
+    function testAudioPlay(round) {
+      const val = document.getElementById(`cfgVoiceText${round}`).value.trim();
+      if (!val) return alert('請先瀏覽選取音效檔案！');
+      playAudioFile(val);
+    }
+
+    async function selectImgFile(round) {
+      const fileName = await ipcRenderer.invoke('select-file', [{ name: 'Images', extensions: ['jpg', 'png', 'gif', 'webp'] }]);
+      if (fileName) document.getElementById(`cfgImg${round}`).value = fileName;
+    }
+
+    async function selectAudioFile(round) {
+      const fileName = await ipcRenderer.invoke('select-file', [{ name: 'Audio', extensions: ['mp3', 'wav', 'ogg'] }]);
+      if (fileName) document.getElementById(`cfgVoiceText${round}`).value = fileName;
+    }
+
+    function updateRound2Visibility(mode) {
+      const isDual = (mode === 'dual');
+      document.querySelectorAll('.round2-container').forEach(el => {
+        el.style.display = isDual ? (el.tagName === 'DIV' && el.classList.contains('f-row') ? 'grid' : 'block') : 'none';
+      });
+    }
+
+    document.getElementsByName('cfgMode').forEach(r => r.addEventListener('change', (e) => updateRound2Visibility(e.target.value)));
+
+    /* ★ 核心倒數引擎：標準秒數計時 + 歸零銜接延遲等待 + 雙重警示閃爍 */
+    function triggerCountdown(t) {
+      if (!isSystemEnabled) return;
+
+      if (t.hotkeyAction === 'toggle' && intervals[t.id]) {
+        clearInterval(intervals[t.id]);
+        delete intervals[t.id];
+        document.querySelectorAll(`.timer-val-${t.id}`).forEach(el => {
+          el.innerText = t.sec1;
+          el.classList.remove('active', 'timer-blink-yellow', 'timer-blink-red');
+        });
+        const hudTime = document.getElementById(`hud-time-${t.id}`);
+        const hudMask = document.getElementById(`hud-mask-${t.id}`);
+        const hudCard = document.getElementById(`hud-card-${t.id}`);
+        if (hudTime) {
+          hudTime.innerText = '--';
+          hudTime.classList.remove('active', 'timer-blink-yellow', 'timer-blink-red');
+        }
+        if (hudMask) hudMask.style.height = '0%';
+        if (hudConfig.hideUnused && hudCard) hudCard.style.display = 'none';
+        return;
+      }
+
+      if (intervals[t.id]) clearInterval(intervals[t.id]);
+
+      let baseDuration = t.sec1;
+      let round = 1;
+      let played = false;
+      let isWaitingGap = false;
+
+      let startTime = Date.now();
+      let totalDurationMs = baseDuration * 1000;
+
+      const mainTargets = document.querySelectorAll(`.timer-val-${t.id}`);
+      const hudTimeEl = document.getElementById(`hud-time-${t.id}`);
+      const hudMaskEl = document.getElementById(`hud-mask-${t.id}`);
+      const hudCard = document.getElementById(`hud-card-${t.id}`);
+
+      if (hudCard) hudCard.style.display = 'flex';
+
+      const updateUI = (val) => {
+        const displayVal = Math.max(0, Math.round(val * 10) / 10);
+
+        mainTargets.forEach(el => {
+          el.innerText = displayVal;
+          el.classList.add('active');
+
+          if (displayVal <= 3) {
+            el.classList.remove('timer-blink-yellow');
+            el.classList.add('timer-blink-red');
+          } else if (displayVal <= 10) {
+            el.classList.remove('timer-blink-red');
+            el.classList.add('timer-blink-yellow');
+          } else {
+            el.classList.remove('timer-blink-yellow', 'timer-blink-red');
+          }
+        });
+
+        if (hudTimeEl) {
+          hudTimeEl.innerText = displayVal;
+          hudTimeEl.classList.add('active');
+
+          if (displayVal <= 3) {
+            hudTimeEl.classList.remove('timer-blink-yellow');
+            hudTimeEl.classList.add('timer-blink-red');
+          } else if (displayVal <= 10) {
+            hudTimeEl.classList.remove('timer-blink-red');
+            hudTimeEl.classList.add('timer-blink-yellow');
+          } else {
+            hudTimeEl.classList.remove('timer-blink-yellow', 'timer-blink-red');
+          }
+        }
+
+        if (hudMaskEl && t.iconMode === 'cooldown') {
+          const ratio = Math.max(0, Math.min(1, displayVal / baseDuration));
+          hudMaskEl.style.height = `${(1 - ratio) * 100}%`;
+        }
+      };
+
+      updateUI(baseDuration);
+
+      intervals[t.id] = setInterval(() => {
+        if (isWaitingGap) return;
+
+        const now = Date.now();
+        const elapsed = now - startTime;
+        const remainingSec = (totalDurationMs - elapsed) / 1000;
+
+        updateUI(remainingSec);
+
+        const targetAdvance = (round === 1) ? (t.voiceAdvance1 || 2) : (t.voiceAdvance2 || 2);
+        const targetAudio = (round === 1) ? t.voiceText1 : t.voiceText2;
+
+        if (remainingSec <= targetAdvance && !played) {
+          played = true;
+          if (targetAudio) playAudioFile(targetAudio);
+        }
+
+        if (remainingSec <= 0) {
+          played = false;
+
+          if (t.mode === 'once') {
+            clearInterval(intervals[t.id]);
+            delete intervals[t.id];
+            mainTargets.forEach(el => {
+              el.innerText = t.sec1;
+              el.classList.remove('active', 'timer-blink-yellow', 'timer-blink-red');
+            });
+            if (hudTimeEl) {
+              hudTimeEl.innerText = '--';
+              hudTimeEl.classList.remove('active', 'timer-blink-yellow', 'timer-blink-red');
+            }
+            if (hudMaskEl) hudMaskEl.style.height = '0%';
+            if (hudConfig.hideUnused && hudCard) hudCard.style.display = 'none';
+          } 
+          else if (t.mode === 'loop' || t.mode === 'dual') {
+            isWaitingGap = true;
+            updateUI(0);
+
+            const gapMs = Math.round(delayCompensationSec * 1000);
+
+            setTimeout(() => {
+              if (!intervals[t.id]) return;
+
+              if (t.mode === 'loop') {
+                baseDuration = t.sec1;
+              } else if (t.mode === 'dual') {
+                round = (round === 1) ? 2 : 1;
+                baseDuration = (round === 2) ? (t.sec2 || t.sec1) : t.sec1;
+              }
+
+              totalDurationMs = baseDuration * 1000;
+              startTime = Date.now();
+              isWaitingGap = false;
+              updateUI(baseDuration);
+            }, gapMs);
+          }
+        }
+      }, 50);
+    }
+
+    function renderEditView() {
+      const curP = getActiveProfile();
+      const listEl = document.getElementById('editTimerList');
+      listEl.innerHTML = '';
+      if (!curP.timers) curP.timers = [];
+
+      if (!selectedTimerId && curP.timers.length > 0) selectedTimerId = curP.timers[0].id;
+
+      curP.timers.forEach((t, idx) => {
+        const div = document.createElement('div');
+        div.className = `edit-item ${t.id === selectedTimerId ? 'active' : ''}`;
+        div.innerText = `[${idx + 1}] ${t.name} (${t.keyName})`;
+        div.onclick = () => {
+          selectedTimerId = t.id;
+          renderEditView();
+        };
+        listEl.appendChild(div);
+      });
+
+      const cur = curP.timers.find(t => t.id === selectedTimerId);
+      if (!cur) return;
+
+      document.getElementById('cfgName').value = cur.name;
+      document.getElementById('cfgKeyName').value = cur.keyName;
+      document.getElementById('cfgSec1').value = cur.sec1;
+      document.getElementById('cfgSec2').value = cur.sec2 || 0;
+      document.getElementById('cfgImg1').value = cur.img1 || '';
+      document.getElementById('cfgImg2').value = cur.img2 || '';
+      document.getElementById('cfgVoiceText1').value = cur.voiceText1 || '';
+      document.getElementById('cfgVoiceAdvance1').value = cur.voiceAdvance1 || 2;
+      document.getElementById('cfgVoiceSteps1').value = cur.voiceSteps1 || 1;
+      document.getElementById('cfgVoiceText2').value = cur.voiceText2 || '';
+      document.getElementById('cfgVoiceAdvance2').value = cur.voiceAdvance2 || 2;
+      document.getElementById('cfgVoiceSteps2').value = cur.voiceSteps2 || 1;
+
+      document.getElementsByName('cfgMode').forEach(r => r.checked = (r.value === cur.mode));
+      document.getElementsByName('cfgDirection').forEach(r => r.checked = (r.value === (cur.direction || 'down')));
+      document.getElementsByName('cfgHotkeyAction').forEach(r => r.checked = (r.value === (cur.hotkeyAction || 'restart')));
+      document.getElementsByName('cfgIconMode').forEach(r => r.checked = (r.value === (cur.iconMode || 'cooldown')));
+
+      updateRound2Visibility(cur.mode);
+    }
+
+    ipcRenderer.on('global-keydown', (e, data) => {
+      if (isRecordingKey) {
+        const curP = getActiveProfile();
+        const cur = curP.timers.find(t => t.id === selectedTimerId);
+        if (cur) {
+          cur.keycode = data.keycode;
+          cur.keyName = getKeyFriendlyName(data.keycode);
+          document.getElementById('cfgKeyName').value = cur.keyName;
+        }
+        isRecordingKey = false;
+        document.getElementById('btnRecordKey').innerText = '點擊設定';
+        return;
+      }
+
+      if (recordingSysAction) {
+        sysKeys[recordingSysAction] = {
+          name: getKeyFriendlyName(data.keycode),
+          keycode: data.keycode
+        };
+        saveAll();
+        renderProfilesView();
+        recordingSysAction = null;
+        return;
+      }
+
+      if (sysKeys.toggle.keycode && data.keycode === sysKeys.toggle.keycode) {
+        setSystemEnabledState();
+        return;
+      }
+      if (sysKeys.pause.keycode && data.keycode === sysKeys.pause.keycode) {
+        resetAllTimers();
+        return;
+      }
+      if (sysKeys.hud.keycode && data.keycode === sysKeys.hud.keycode) {
+        const isHud = (document.getElementById('view-floating').style.display === 'flex');
+        ipcRenderer.send('switch-view', isHud ? 'main' : 'floating');
+        return;
+      }
+
+      if (!isSystemEnabled) return;
+      const curP = getActiveProfile();
+      if (!curP.timers) return;
+
+      const matched = curP.timers.find(t => t.keycode === data.keycode);
+      if (matched) triggerCountdown(matched);
+    });
+
+    const vMain = document.getElementById('view-main');
+    const vProfiles = document.getElementById('view-profiles');
+    const vEdit = document.getElementById('view-edit');
+    const vHudConfig = document.getElementById('view-hud-config');
+    const vHud = document.getElementById('view-floating');
+    const resizeHandle = document.getElementById('globalResizeHandle');
+
+    function showView(view) {
+      vMain.style.display = (view === 'main') ? 'flex' : 'none';
+      vProfiles.style.display = (view === 'profiles') ? 'flex' : 'none';
+      vEdit.style.display = (view === 'edit') ? 'flex' : 'none';
+      vHudConfig.style.display = (view === 'hud-config') ? 'flex' : 'none';
+      vHud.style.display = (view === 'hud') ? 'flex' : 'none';
+
+      resizeHandle.style.display = (view === 'hud') ? 'none' : 'block';
+    }
+
+    document.getElementById('btnOpenProfiles').onclick = () => {
+      ipcRenderer.send('switch-view', 'profiles');
+      showView('profiles');
+      renderProfilesView();
+    };
+    document.getElementById('btnBackFromProfiles').onclick = () => {
+      ipcRenderer.send('switch-view', 'main');
+      showView('main');
+      renderMain();
+    };
+    document.getElementById('btnOpenEdit').onclick = () => {
+      ipcRenderer.send('switch-view', 'edit');
+      showView('edit');
+      renderEditView();
+    };
+    document.getElementById('btnCancelEdit').onclick = () => {
+      ipcRenderer.send('switch-view', 'main');
+      showView('main');
+      renderMain();
+    };
+    document.getElementById('btnOpenHudConfig').onclick = () => {
+      ipcRenderer.send('switch-view', 'hud-config');
+      showView('hud-config');
+      loadHudConfigForm();
+    };
+
+    document.getElementById('btnHudGear').onclick = () => {
+      ipcRenderer.send('switch-view', 'main');
+      showView('main');
+      renderMain();
+    };
+
+    document.getElementById('btnCloseHudConfig').onclick = () => {
+      ipcRenderer.send('switch-view', 'main');
+      showView('main');
+      renderMain();
+    };
+
+    document.getElementById('btnGoFloat').onclick = () => {
+      renderHudCards();
+      ipcRenderer.send('switch-view', 'floating');
+    };
+
+    document.getElementById('btnToggleEnable').onclick = () => setSystemEnabledState();
+    document.getElementById('hudStatusTag').onclick = () => setSystemEnabledState();
+
+    document.getElementById('btnSaveHudConfig').onclick = () => {
+      readHudConfigFromForm();
+      saveAll();
+      renderHudCards();
+      alert('懸浮窗設定已成功儲存！');
+    };
+    document.getElementById('btnApplyHudConfig').onclick = () => {
+      readHudConfigFromForm();
+      saveAll();
+      renderHudCards();
+    };
+
+    document.getElementById('btnApplySlot').onclick = () => {
+      activeProfileId = selectedSlotId;
+      saveAll();
+      resetAllTimers();
+      renderProfilesView();
+      renderMain();
+      renderHudCards();
+      alert(`已成功套用設定檔：${getActiveProfile().name}`);
+    };
+
+    document.getElementById('btnSaveProfileName').onclick = () => {
+      const slot = getSelectedSlot();
+      const val = document.getElementById('inputProfileName').value.trim();
+      if (!val) return alert('專案名稱不能為空！');
+      slot.name = val;
+      saveAll();
+      renderProfilesView();
+      renderMain();
+    };
+
+    document.getElementById('btnAddProfile').onclick = () => {
+      const newId = Date.now();
+      const newProfile = { id: newId, name: `新專案設定檔_${profiles.length + 1}`, timers: [] };
+      profiles.push(newProfile);
+      selectedSlotId = newId;
+      saveAll();
+      renderProfilesView();
+    };
+
+    document.getElementById('btnMoveUpProfile').onclick = () => {
+      const idx = profiles.findIndex(p => p.id === selectedSlotId);
+      if (idx > 0) {
+        [profiles[idx - 1], profiles[idx]] = [profiles[idx], profiles[idx - 1]];
+        saveAll();
+        renderProfilesView();
+      }
+    };
+
+    document.getElementById('btnMoveDownProfile').onclick = () => {
+      const idx = profiles.findIndex(p => p.id === selectedSlotId);
+      if (idx < profiles.length - 1) {
+        [profiles[idx + 1], profiles[idx]] = [profiles[idx], profiles[idx + 1]];
+        saveAll();
+        renderProfilesView();
+      }
+    };
+
+    document.getElementById('btnDeleteProfile').onclick = () => {
+      if (profiles.length <= 1) return alert('請至少保留一個設定檔專案！');
+      const curSlot = getSelectedSlot();
+      if (!confirm(`確定要刪除設定檔「${curSlot.name}」嗎？`)) return;
+
+      const isDeletingActive = (curSlot.id === activeProfileId);
+      profiles = profiles.filter(p => p.id !== selectedSlotId);
+      if (isDeletingActive) {
+        activeProfileId = profiles[0].id;
+        resetAllTimers();
+      }
+      selectedSlotId = profiles[0].id;
+
+      saveAll();
+      renderProfilesView();
+      renderMain();
+      renderHudCards();
+    };
+
+    document.getElementById('btnExportSlot').onclick = async () => {
+      const slot = getSelectedSlot();
+      const dataStr = JSON.stringify(slot, null, 2);
+      const ok = await ipcRenderer.invoke('export-profile-file', dataStr, slot.name);
+      if (ok) alert('設定檔已成功匯出！');
+    };
+
+    document.getElementById('btnImportSlot').onclick = async () => {
+      const importedData = await ipcRenderer.invoke('import-profile-file');
+      if (importedData && importedData.timers) {
+        const newId = Date.now();
+        const newProfile = { id: newId, name: importedData.name || "匯入之設定檔", timers: importedData.timers };
+        profiles.push(newProfile);
+        selectedSlotId = newId;
+        saveAll();
+        renderProfilesView();
+        alert('設定檔已成功匯入新增至列表中！');
+      }
+    };
+
+    ['pause', 'toggle', 'hud'].forEach(act => {
+      document.getElementById(`btnSysKey_${act}`).onclick = (e) => {
+        recordingSysAction = act;
+        e.target.innerText = '按任意鍵...';
+      };
+      document.getElementById(`btnClearSys_${act}`).onclick = () => {
+        sysKeys[act] = { name: "無", keycode: null };
+        saveAll();
+        renderProfilesView();
+      };
+    });
+
+    document.getElementById('btnRecordKey').onclick = () => {
+      isRecordingKey = true;
+      document.getElementById('btnRecordKey').innerText = '按任意鍵...';
+    };
+    document.getElementById('btnClearKey').onclick = () => {
+      const curP = getActiveProfile();
+      const cur = curP.timers.find(t => t.id === selectedTimerId);
+      if (cur) {
+        cur.keycode = 0;
+        cur.keyName = "無";
+        document.getElementById('cfgKeyName').value = "無";
+        saveAll();
+      }
+    };
+
+    document.getElementById('btnSaveSingleTimer').onclick = () => {
+      const curP = getActiveProfile();
+      const cur = curP.timers.find(t => t.id === selectedTimerId);
+      if (!cur) return;
+
+      cur.name = document.getElementById('cfgName').value;
+      cur.sec1 = parseFloat(document.getElementById('cfgSec1').value) || 10;
+      cur.sec2 = parseFloat(document.getElementById('cfgSec2').value) || 0;
+      cur.img1 = document.getElementById('cfgImg1').value;
+      cur.img2 = document.getElementById('cfgImg2').value;
+      cur.voiceText1 = document.getElementById('cfgVoiceText1').value;
+      cur.voiceAdvance1 = parseFloat(document.getElementById('cfgVoiceAdvance1').value) || 2;
+      cur.voiceSteps1 = parseInt(document.getElementById('cfgVoiceSteps1').value) || 1;
+      cur.voiceText2 = document.getElementById('cfgVoiceText2').value;
+      cur.voiceAdvance2 = parseFloat(document.getElementById('cfgVoiceAdvance2').value) || 2;
+      cur.voiceSteps2 = parseInt(document.getElementById('cfgVoiceSteps2').value) || 1;
+
+      const checkedMode = Array.from(document.getElementsByName('cfgMode')).find(r => r.checked);
+      cur.mode = checkedMode ? checkedMode.value : 'loop';
+
+      const checkedDir = Array.from(document.getElementsByName('cfgDirection')).find(r => r.checked);
+      cur.direction = checkedDir ? checkedDir.value : 'down';
+
+      const checkedAction = Array.from(document.getElementsByName('cfgHotkeyAction')).find(r => r.checked);
+      cur.hotkeyAction = checkedAction ? checkedAction.value : 'restart';
+
+      const checkedIcon = Array.from(document.getElementsByName('cfgIconMode')).find(r => r.checked);
+      cur.iconMode = checkedIcon ? checkedIcon.value : 'cooldown';
+
+      saveAll();
+      renderEditView();
+      renderHudCards();
+      alert('計時項目已儲存！');
+    };
+
+    document.getElementById('btnSaveAllTimers').onclick = () => document.getElementById('btnSaveSingleTimer').click();
+
+    document.getElementById('btnAddTimer').onclick = () => {
+      const curP = getActiveProfile();
+      const newT = {
+        id: Date.now(),
+        name: "新技能",
+        keyName: "無",
+        keycode: 0,
+        mode: "loop",
+        direction: "down",
+        sec1: 30.0,
+        sec2: 0,
+        hotkeyAction: "restart",
+        iconMode: "cooldown",
+        img1: "",
+        img2: "",
+        voiceText1: "",
+        voiceAdvance1: 2,
+        voiceSteps1: 1,
+        voiceText2: "",
+        voiceAdvance2: 2,
+        voiceSteps2: 1
+      };
+      curP.timers.push(newT);
+      selectedTimerId = newT.id;
+      saveAll();
+      renderEditView();
+    };
+
+    document.getElementById('btnDeleteTimer').onclick = () => {
+      const curP = getActiveProfile();
+      if (curP.timers.length <= 1) return alert('請至少保留一個計時組！');
+      curP.timers = curP.timers.filter(t => t.id !== selectedTimerId);
+      selectedTimerId = curP.timers[0].id;
+      saveAll();
+      renderEditView();
+    };
+
+    document.getElementById('btnMoveUp').onclick = () => {
+      const curP = getActiveProfile();
+      const idx = curP.timers.findIndex(t => t.id === selectedTimerId);
+      if (idx > 0) {
+        [curP.timers[idx - 1], curP.timers[idx]] = [curP.timers[idx], curP.timers[idx - 1]];
+        saveAll();
+        renderEditView();
+      }
+    };
+    document.getElementById('btnMoveDown').onclick = () => {
+      const curP = getActiveProfile();
+      const idx = curP.timers.findIndex(t => t.id === selectedTimerId);
+      if (idx < curP.timers.length - 1) {
+        [curP.timers[idx + 1], curP.timers[idx]] = [curP.timers[idx], curP.timers[idx + 1]];
+        saveAll();
+        renderEditView();
+      }
+    };
+
+    ipcRenderer.on('mode-changed', (e, mode) => {
+      if (mode === 'main') {
+        showView('main');
+        renderMain();
+      } else if (mode === 'profiles') {
+        showView('profiles');
+        renderProfilesView();
+      } else if (mode === 'edit') {
+        showView('edit');
+        renderEditView();
+      } else if (mode === 'hud-config') {
+        showView('hud-config');
+      } else if (mode === 'floating') {
+        showView('hud');
+        renderHudCards();
+      }
+    });
+
+    ipcRenderer.invoke('get-current-os').then(osType => {
+      const savedOs = localStorage.getItem('user_selected_os') || osType;
+      updateOsUI(savedOs);
+    });
+
+    renderMain();
+    renderHudCards();
+  </script>
+</body>
+</html>
