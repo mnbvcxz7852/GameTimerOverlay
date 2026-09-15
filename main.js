@@ -25,9 +25,25 @@ function ensureAssetDirs() {
   const pngDir = path.join(rootDir, 'png_type');
   const soundDir = path.join(rootDir, 'sound_type');
 
-  [pngDir, soundDir].forEach(dir => {
-    if (!fs.existsSync(dir)) {
-      try { fs.mkdirSync(dir, { recursive: true }); } catch (e) {}
+  // 取得打包時 extraFiles 被放置的原始位置 (在 Mac .app 內部或 Win 的 .exe 旁邊)
+  const bundledDir = app.isPackaged ? path.dirname(process.execPath) : __dirname;
+
+  [
+    { target: pngDir, source: path.join(bundledDir, 'png_type') },
+    { target: soundDir, source: path.join(bundledDir, 'sound_type') }
+  ].forEach(({ target, source }) => {
+    if (!fs.existsSync(target)) {
+      try { 
+        // 1. 先在目標位置建立資料夾
+        fs.mkdirSync(target, { recursive: true });
+        
+        // 2. 如果是 Mac，且內部打包來源有檔案，就把它們複製到 Documents 裡給使用者
+        if (currentOS === 'macos' && app.isPackaged && fs.existsSync(source)) {
+          fs.cpSync(source, target, { recursive: true });
+        }
+      } catch (e) {
+        console.error("複製預設資源失敗:", e);
+      }
     }
   });
 }

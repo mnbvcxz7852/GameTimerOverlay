@@ -22,7 +22,7 @@
       "output": "dist"
     },
     "win": {
-      "target": ["nsis", "portable"],
+      "target": ["nsis", "portable", "zip"],
       "icon": "build/icon.ico"
     },
     "nsis": {
@@ -36,6 +36,18 @@
       "main.js",
       "index.html",
       "node_modules/**/*"
+    ],
+    "extraFiles": [
+      {
+        "from": "png_type",
+        "to": "png_type",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "sound_type",
+        "to": "sound_type",
+        "filter": ["**/*"]
+      }
     ]
   }
 }

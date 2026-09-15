@@ -1,0 +1,50 @@
+{
+  "id": 1789449897780,
+  "name": "殘暴炎魔",
+  "timers": [
+    {
+      "id": 1789450196081,
+      "name": "魔方/黑水(雙回合)",
+      "keyName": "Num1",
+      "keycode": 79,
+      "mode": "dual",
+      "direction": "down",
+      "sec1": 40,
+      "sec2": 40,
+      "hotkeyAction": "restart",
+      "iconMode": "default",
+      "img1": "Zakum_Poison pit.jpg",
+      "img2": "Zakum_Green square.png",
+      "voiceText1": "炎-中文-女-瀟瀟1_黑水.mp3",
+      "playMode1": "single",
+      "voiceAdvance1": 2,
+      "voiceSteps1": 1,
+      "voiceText2": "炎-中文-女-瀟瀟1_機制魔方.mp3",
+      "playMode2": "single",
+      "voiceAdvance2": 2,
+      "voiceSteps2": 1
+    },
+    {
+      "id": 1789450311519,
+      "name": "固定魔方",
+      "keyName": "Num2",
+      "keycode": 80,
+      "mode": "loop",
+      "direction": "down",
+      "sec1": 150,
+      "sec2": 0,
+      "hotkeyAction": "restart",
+      "iconMode": "default",
+      "img1": "Zakum_Green square.png",
+      "img2": "",
+      "voiceText1": "炎-中文-女-瀟瀟1_固定魔方.mp3",
+      "playMode1": "single",
+      "voiceAdvance1": 2,
+      "voiceSteps1": 1,
+      "voiceText2": "",
+      "playMode2": "single",
+      "voiceAdvance2": 2,
+      "voiceSteps2": 1
+    }
+  ]
+}
