@@ -82,7 +82,6 @@
       padding: 8px 14px;
     }
 
-    /* 主畫面 */
     #view-main {
       display: flex;
       flex-direction: column;
@@ -129,7 +128,6 @@
     .val-display { font-size: 26px; font-weight: bold; color: #60a5fa; transition: color 0.2s; }
     .val-display.active { color: #38bdf8; text-shadow: 0 0 8px rgba(56, 189, 248, 0.5); }
 
-    /* 設定檔管理 */
     #view-profiles {
       display: none;
       flex-direction: column;
@@ -205,7 +203,6 @@
     }
     .key-btn-record:hover { background: #2563eb; color: white; }
 
-    /* 編輯計時組 */
     #view-edit {
       display: none;
       flex-direction: column;
@@ -260,7 +257,6 @@
     .radios { display: flex; gap: 14px; align-items: center; }
     .round2-container { display: none; }
 
-    /* 懸浮窗設定視窗 */
     #view-hud-config {
       display: none;
       flex-direction: column;
@@ -296,7 +292,6 @@
     .color-code-text { width: 85px; font-family: monospace; }
     .cfg-divider { border-bottom: 1px solid #28334e; margin: 4px 0; }
 
-    /* 懸浮窗視窗主體 (全透明背景) */
     #view-floating {
       display: none;
       flex-direction: column;
@@ -361,6 +356,7 @@
       display: flex;
       flex-direction: column;
       align-items: center;
+      position: relative;
     }
     .hud-card-time {
       font-size: 13px;
@@ -370,10 +366,11 @@
       padding: 1px 4px;
       border-radius: 2px;
       -webkit-app-region: no-drag;
+      transition: color 0.2s;
     }
-    .hud-card-time.active { color: #38bdf8 !important; text-shadow: 0 0 6px rgba(56, 189, 248, 0.8); }
+    
+    .hud-card-time.active { text-shadow: 0 0 6px rgba(56, 189, 248, 0.8); }
 
-    /* 按住圖片即可拖動整窗 */
     .hud-img-box {
       background: #0b0f19;
       border: 1px solid #1e293b;
@@ -391,6 +388,7 @@
       height: 100%;
       object-fit: contain;
       pointer-events: none;
+      transition: filter 0.2s ease;
     }
     .hud-cooldown-mask {
       position: absolute;
@@ -400,7 +398,7 @@
       height: 0%;
       background: rgba(0, 0, 0, 0.6);
       pointer-events: none;
-      transition: height 0.2s linear;
+      transition: height 0.1s linear;
     }
     .hud-card-name {
       font-size: 11px;
@@ -427,7 +425,22 @@
       border-bottom: 2px solid rgba(148, 163, 184, 0.5);
     }
 
-    /* 倒數動態警示動畫 */
+    .img-grayscale { filter: grayscale(100%); }
+    .img-color { filter: grayscale(0%); }
+
+    @keyframes flash-to-gray {
+      0%, 100% { filter: grayscale(0%); }
+      50% { filter: grayscale(100%); }
+    }
+
+    @keyframes flash-to-color {
+      0%, 100% { filter: grayscale(100%); }
+      50% { filter: grayscale(0%); }
+    }
+
+    .img-blink-to-gray { animation: flash-to-gray 0.5s infinite !important; }
+    .img-blink-to-color { animation: flash-to-color 0.5s infinite !important; }
+
     @keyframes blink-yellow {
       0%, 100% { opacity: 1; color: #facc15; text-shadow: 0 0 8px rgba(250, 204, 21, 0.8); }
       50% { opacity: 0.3; color: #ca8a04; text-shadow: none; }
@@ -438,12 +451,25 @@
       50% { opacity: 0.2; color: #991b1b; text-shadow: none; }
     }
 
-    .timer-blink-yellow {
-      animation: blink-yellow 1s infinite ease-in-out !important;
-    }
+    .timer-blink-yellow { animation: blink-yellow 1s infinite ease-in-out !important; }
+    .timer-blink-red { animation: blink-red 0.4s infinite ease-in-out !important; }
 
-    .timer-blink-red {
-      animation: blink-red 0.4s infinite ease-in-out !important;
+    .img-preview-popover {
+      position: absolute;
+      background: #0f172a;
+      border: 1px solid #475569;
+      border-radius: 6px;
+      padding: 6px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+      z-index: 10000;
+      display: none;
+      top: 34px;
+      left: 120px;
+    }
+    .img-preview-popover img {
+      max-width: 120px;
+      max-height: 120px;
+      object-fit: contain;
     }
   </style>
 </head>
@@ -465,6 +491,7 @@
 
     <div class="toolbar non-draggable">
       <button class="btn btn-green" id="btnToggleEnable">✔ 啟用</button>
+      <button class="btn btn-blue" id="btnTogglePin">📌 置頂：開</button>
       <button class="btn btn-sub" id="btnOpenProfiles">💾 設定檔</button>
       <button class="btn btn-purple" id="btnOpenEdit">⚙ 編輯計時</button>
       <button class="btn btn-sub" id="btnOpenHudConfig">🖥 懸浮窗設定</button>
@@ -563,8 +590,10 @@
         <div class="edit-list-box" id="editTimerList"></div>
         <button class="btn btn-purple" id="btnSaveAllTimers">💾 全部儲存</button>
         <button class="btn btn-green" id="btnAddTimer">➕ 新增</button>
-        <button class="btn" id="btnMoveUp">⬆ 上移</button>
-        <button class="btn" id="btnMoveDown">⬇ 下移</button>
+        <div style="display:flex; gap:6px;">
+          <button class="btn" id="btnMoveUp" style="flex:1;">⬆ 上移</button>
+          <button class="btn" id="btnMoveDown" style="flex:1;">⬇ 下移</button>
+        </div>
         <button class="btn btn-red" id="btnDeleteTimer">🗑 刪除</button>
       </div>
 
@@ -624,26 +653,30 @@
         <span class="section-title">圖片配置</span>
         <div class="f-row">
           <label>圖片 ( 回合一 )：</label>
-          <div style="display:flex; gap:6px; width:100%;">
-            <input type="text" id="cfgImg1" style="flex:1;" placeholder="點選瀏覽選取圖檔 (僅顯示檔名)">
-            <button class="btn btn-sub" onclick="selectImgFile(1)">🔎 瀏覽</button>
+          <div style="display:flex; gap:6px; width:100%; position:relative;">
+            <select id="cfgImg1" style="flex:1;"></select>
+            <button class="btn btn-sub" id="btnPreviewImg1">🔎 瀏覽</button>
+            <button class="btn btn-sub" onclick="ipcRenderer.invoke('open-asset-folder', 'png_type')">📁 開啟資料夾</button>
+            <div class="img-preview-popover" id="popoverImg1"><img src=""></div>
           </div>
         </div>
         <div class="f-row round2-container" id="rowImg2">
           <label>圖片 ( 回合二 )：</label>
-          <div style="display:flex; gap:6px; width:100%;">
-            <input type="text" id="cfgImg2" style="flex:1;" placeholder="點選瀏覽選取圖檔 (僅顯示檔名)">
-            <button class="btn btn-sub" onclick="selectImgFile(2)">🔎 瀏覽</button>
+          <div style="display:flex; gap:6px; width:100%; position:relative;">
+            <select id="cfgImg2" style="flex:1;"></select>
+            <button class="btn btn-sub" id="btnPreviewImg2">🔎 瀏覽</button>
+            <button class="btn btn-sub" onclick="ipcRenderer.invoke('open-asset-folder', 'png_type')">📁 開啟資料夾</button>
+            <div class="img-preview-popover" id="popoverImg2"><img src=""></div>
           </div>
         </div>
 
         <span class="section-title">音效 ( 回合一 ) ：</span>
         <div class="f-row">
-          <label>音效管理：</label>
+          <label>音效選擇：</label>
           <div style="display:flex; gap:6px; width:100%;">
-            <input type="text" id="cfgVoiceText1" style="flex:1;" placeholder="選取音效檔案 (mp3/wav/ogg)">
-            <button class="btn btn-sub" onclick="selectAudioFile(1)">🔎 瀏覽</button>
+            <select id="cfgVoiceText1" style="flex:1;"></select>
             <button class="btn btn-blue" onclick="testAudioPlay(1)">▶ 測試</button>
+            <button class="btn btn-sub" onclick="ipcRenderer.invoke('open-asset-folder', 'sound_type')">📁 開啟資料夾</button>
           </div>
         </div>
         <div class="f-row">
@@ -665,11 +698,11 @@
         <div class="round2-container" id="boxVoice2">
           <span class="section-title">音效 ( 回合二 ) ：</span>
           <div class="f-row">
-            <label>音效管理：</label>
+            <label>音效選擇：</label>
             <div style="display:flex; gap:6px; width:100%;">
-              <input type="text" id="cfgVoiceText2" style="flex:1;" placeholder="選取音效檔案 (mp3/wav/ogg)">
-              <button class="btn btn-sub" onclick="selectAudioFile(2)">🔎 瀏覽</button>
+              <select id="cfgVoiceText2" style="flex:1;"></select>
               <button class="btn btn-blue" onclick="testAudioPlay(2)">▶ 測試</button>
+              <button class="btn btn-sub" onclick="ipcRenderer.invoke('open-asset-folder', 'sound_type')">📁 開啟資料夾</button>
             </div>
           </div>
           <div class="f-row">
@@ -805,7 +838,9 @@
         <select id="hcfg_namePos" style="width:140px;">
           <option value="bottom">圖片下方 ( 外 )</option>
           <option value="top">圖片上方 ( 外 )</option>
-          <option value="none">隱藏</option>
+          <option value="inside-center">圖片內中間</option>
+          <option value="inside-top">圖片內上方</option>
+          <option value="inside-bottom">圖片內下方</option>
         </select>
       </div>
       <div class="cfg-input-row">
@@ -841,24 +876,28 @@
     const path = require('path');
     const os = require('os');
 
-    const WIN_ASSET_DIR = "D:\\m6232set\\Desktop\\軟體安裝檔\\Countdown_Timer_plus_v1.4.1\\Countdown_Timer_plus_v1.4.1\\png_type";
-    const MAC_ASSET_DIR = path.join(os.homedir(), 'Documents', 'CountdownTimer_Assets', 'png_type');
-
     let currentOS = 'windows';
     let delayCompensationSec = parseFloat(localStorage.getItem('user_delay_compensation')) || 0.3;
+    let activeRootDir = '';
 
-    function getActiveAssetDir() {
-      return (currentOS === 'macos') ? MAC_ASSET_DIR : WIN_ASSET_DIR;
+    // 動態向後端獲取程式根目錄
+    function getActiveRootDir() {
+      return activeRootDir || __dirname;
     }
 
-    function resolveFilePath(fileName, defaultExt = '.png') {
+    function resolveFilePath(fileName, subDir = 'png_type') {
       if (!fileName) return '';
-      if (fileName.includes(':') || fileName.startsWith('/') || fileName.startsWith('file:') || fileName.startsWith('http')) {
-        return fileName;
+      if (fileName.startsWith('http')) return fileName;
+      
+      let fullPath = fileName;
+      if (!fileName.includes(':') && !fileName.startsWith('/') && !fileName.startsWith('file:')) {
+        fullPath = path.join(getActiveRootDir(), subDir, fileName);
       }
-      let full = path.join(getActiveAssetDir(), fileName);
-      if (defaultExt && !full.includes('.')) full += defaultExt;
-      return full;
+      
+      if (!fullPath.startsWith('file://')) {
+        fullPath = `file:///${fullPath.replace(/\\/g, '/')}`;
+      }
+      return fullPath;
     }
 
     function getKeyFriendlyName(keycode) {
@@ -922,17 +961,10 @@
         id: 1,
         name: "困拉計時5（全部）",
         timers: [
-          { id: 1, name: "69%困拉黑水", keyName: "Num1", keycode: 79, mode: "loop", direction: "down", sec1: 70.0, sec2: 0, hotkeyAction: "restart", iconMode: "cooldown", img1: "Papulatus(Hard)_Poison pit.png", img2: "", voiceText1: "blackwater.mp3", voiceAdvance1: 2, voiceSteps1: 1, voiceText2: "", voiceAdvance2: 2, voiceSteps2: 1 },
-          { id: 2, name: "84%小怪計時", keyName: "Num2", keycode: 80, mode: "dual", direction: "down", sec1: 45.0, sec2: 10.0, hotkeyAction: "restart", iconMode: "cooldown", img1: "Papulatus(Hard)_little monster disapp.png", img2: "Papulatus(Hard)_little monster.png", voiceText1: "monster_appear.mp3", voiceAdvance1: 3, voiceSteps1: 1, voiceText2: "monster_disappear.mp3", voiceAdvance2: 2, voiceSteps2: 1 },
-          { id: 3, name: "分身技能", keyName: "Num3", keycode: 81, mode: "loop", direction: "down", sec1: 30.0, sec2: 0, hotkeyAction: "restart", iconMode: "cooldown", img1: "", img2: "", voiceText1: "", voiceAdvance1: 2, voiceSteps1: 1, voiceText2: "", voiceAdvance2: 2, voiceSteps2: 1 },
-          { id: 4, name: "84%反盾", keyName: "Num4", keycode: 75, mode: "loop", direction: "down", sec1: 80.0, sec2: 0, hotkeyAction: "restart", iconMode: "cooldown", img1: "", img2: "", voiceText1: "", voiceAdvance1: 3, voiceSteps1: 1, voiceText2: "", voiceAdvance2: 2, voiceSteps2: 1 }
-        ]
-      },
-      {
-        id: 2,
-        name: "炎計時1【預設】",
-        timers: [
-          { id: 101, name: "黑水計時", keyName: "Num1", keycode: 79, mode: "loop", direction: "down", sec1: 60.0, sec2: 0, hotkeyAction: "restart", iconMode: "cooldown", img1: "Papulatus(Hard)_Poison pit.png", img2: "", voiceText1: "blackwater.mp3", voiceAdvance1: 2, voiceSteps1: 1, voiceText2: "", voiceAdvance2: 2, voiceSteps2: 1 }
+          { id: 1, name: "69%困拉黑水", keyName: "Num1", keycode: 79, mode: "loop", direction: "down", sec1: 70.0, sec2: 0, hotkeyAction: "restart", iconMode: "cooldown", img1: "Papulatus(Hard)_Poison pit.png", img2: "", voiceText1: "blackwater.mp3", playMode1: "single", voiceAdvance1: 2, voiceSteps1: 1, voiceText2: "", playMode2: "single", voiceAdvance2: 2, voiceSteps2: 1 },
+          { id: 2, name: "84%小怪計時", keyName: "Num2", keycode: 80, mode: "dual", direction: "down", sec1: 45.0, sec2: 10.0, hotkeyAction: "restart", iconMode: "cooldown", img1: "Papulatus(Hard)_little monster disapp.png", img2: "Papulatus(Hard)_little monster.png", voiceText1: "monster_appear.mp3", playMode1: "single", voiceAdvance1: 3, voiceSteps1: 1, voiceText2: "monster_disappear.mp3", playMode2: "single", voiceAdvance2: 2, voiceSteps2: 1 },
+          { id: 3, name: "分身技能", keyName: "Num3", keycode: 81, mode: "loop", direction: "down", sec1: 30.0, sec2: 0, hotkeyAction: "restart", iconMode: "cooldown", img1: "", img2: "", voiceText1: "", playMode1: "single", voiceAdvance1: 2, voiceSteps1: 1, voiceText2: "", playMode2: "single", voiceAdvance2: 2, voiceSteps2: 1 },
+          { id: 4, name: "84%反盾", keyName: "Num4", keycode: 75, mode: "loop", direction: "down", sec1: 80.0, sec2: 0, hotkeyAction: "restart", iconMode: "cooldown", img1: "", img2: "", voiceText1: "", playMode1: "single", voiceAdvance1: 3, voiceSteps1: 1, voiceText2: "", playMode2: "single", voiceAdvance2: 2, voiceSteps2: 1 }
         ]
       }
     ];
@@ -955,6 +987,7 @@
     let isRecordingKey = false;
     let recordingSysAction = null;
     let isSystemEnabled = true;
+    let isAlwaysPinned = true;
     let intervals = {};
     let currentTestingAudio = null;
 
@@ -1001,6 +1034,15 @@
 
     ipcRenderer.on('os-changed', (e, osType) => updateOsUI(osType));
 
+    const btnTogglePin = document.getElementById('btnTogglePin');
+    btnTogglePin.onclick = () => {
+      isAlwaysPinned = !isAlwaysPinned;
+      ipcRenderer.send('toggle-always-on-top', isAlwaysPinned);
+      btnTogglePin.innerText = isAlwaysPinned ? '📌 置頂：開' : '📌 置頂：關';
+      btnTogglePin.classList.toggle('btn-blue', isAlwaysPinned);
+      btnTogglePin.classList.toggle('btn-sub', !isAlwaysPinned);
+    };
+
     function renderMain() {
       const curP = getActiveProfile();
       document.getElementById('curProfileMainTitle').innerText = `設定檔：${curP.name}`;
@@ -1020,7 +1062,7 @@
         mRow.innerHTML = `
           <span>${t.name}</span>
           <span style="color:#94a3b8">${t.keyName}</span>
-          <span class="val-display timer-val-${t.id}">${t.sec1}</span>
+          <span class="val-display timer-val-${t.id}">${t.direction === 'up' ? 0 : Math.ceil(t.sec1)}</span>
           <span style="color:#94a3b8">${t.mode === 'loop' ? '自動循環' : (t.mode === 'once' ? '倒數後停止' : '雙回合切換')}</span>
         `;
         mainEl.appendChild(mRow);
@@ -1043,7 +1085,7 @@
       if (!curP.timers) return;
 
       curP.timers.forEach(t => {
-        const fullImgPath = resolveFilePath(t.img1, '.png');
+        const fullImgPath = resolveFilePath(t.img1, 'png_type');
         const card = document.createElement('div');
         card.className = 'hud-card';
         card.id = `hud-card-${t.id}`;
@@ -1057,24 +1099,38 @@
         const nameBgStyle = hudConfig.showNameBg ? `background:${hudConfig.colorNameBg};` : 'background:transparent;';
         const nameColorStyle = `color:${hudConfig.colorName}; text-align:${hudConfig.nameAlign};`;
 
-        const nameDom = (hudConfig.namePos !== 'none') ? `
-          <div class="hud-card-name" style="${nameBgStyle} ${nameColorStyle} max-width:${Math.max(hudConfig.size + 14, 58)}px;" title="${t.name}">${t.name}</div>
-        ` : '';
+        const isInside = hudConfig.namePos && hudConfig.namePos.startsWith('inside-');
+        let insideStyle = '';
+        if (isInside) {
+          let vPos = 'top:50%; transform:translateY(-50%);';
+          if (hudConfig.namePos === 'inside-top') vPos = 'top:2px;';
+          if (hudConfig.namePos === 'inside-bottom') vPos = 'bottom:2px;';
+          insideStyle = `position:absolute; left:2px; right:2px; ${vPos} z-index:5; font-size:10px; pointer-events:none;`;
+        }
+
+        const nameDom = `
+          <div class="hud-card-name" style="${nameBgStyle} ${nameColorStyle} ${insideStyle} max-width:${Math.max(hudConfig.size + 14, 58)}px;" title="${t.name}">
+            ${t.name}
+          </div>
+        `;
 
         const timeDom = `<div class="hud-card-time" id="hud-time-${t.id}" style="${timeBgStyle} ${timeColorStyle}">${intervals[t.id] ? '--' : '--'}</div>`;
 
         const imgDom = hudConfig.showImg ? `
-          <div class="hud-img-box" style="width:${hudConfig.size}px; height:${hudConfig.size}px;">
+          <div class="hud-img-box" style="width:${hudConfig.size}px; height:${hudConfig.size}px; position:relative;">
             ${fullImgPath ? `<img src="${fullImgPath}" class="hud-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">` : ''}
             <div class="hud-img-placeholder" style="${fullImgPath ? 'display:none;' : ''}">${t.name.substring(0, 3)}</div>
             <div class="hud-cooldown-mask" id="hud-mask-${t.id}"></div>
+            ${isInside ? nameDom : ''}
           </div>
         ` : '';
 
-        if (hudConfig.namePos === 'top') {
+        if (!isInside && hudConfig.namePos === 'top') {
           card.innerHTML = `${nameDom}${timeDom}${imgDom}`;
-        } else {
+        } else if (!isInside) {
           card.innerHTML = `${timeDom}${imgDom}${nameDom}`;
+        } else {
+          card.innerHTML = `${timeDom}${imgDom}`;
         }
 
         container.appendChild(card);
@@ -1236,26 +1292,32 @@
           clearInterval(intervals[t.id]);
           delete intervals[t.id];
         }
-        document.querySelectorAll(`.timer-val-${t.id}`).forEach(el => {
-          el.innerText = t.sec1;
-          el.classList.remove('active', 'timer-blink-yellow', 'timer-blink-red');
-        });
-        const hudTimeEl = document.getElementById(`hud-time-${t.id}`);
-        const hudMaskEl = document.getElementById(`hud-mask-${t.id}`);
-        const hudCard = document.getElementById(`hud-card-${t.id}`);
-
-        if (hudTimeEl) {
-          hudTimeEl.innerText = '--';
-          hudTimeEl.classList.remove('active', 'timer-blink-yellow', 'timer-blink-red');
-        }
-        if (hudMaskEl) hudMaskEl.style.height = '0%';
-        if (hudConfig.hideUnused && hudCard) hudCard.style.display = 'none';
+        resetSingleTimerUI(t);
       });
+    }
+
+    function resetSingleTimerUI(t) {
+      document.querySelectorAll(`.timer-val-${t.id}`).forEach(el => {
+        el.innerText = (t.direction === 'up') ? '0' : Math.ceil(t.sec1);
+        el.classList.remove('active', 'timer-blink-yellow', 'timer-blink-red');
+      });
+      const hudTime = document.getElementById(`hud-time-${t.id}`);
+      const hudMask = document.getElementById(`hud-mask-${t.id}`);
+      const hudCard = document.getElementById(`hud-card-${t.id}`);
+      const imgEl = hudCard ? hudCard.querySelector('.hud-img') : null;
+
+      if (hudTime) {
+        hudTime.innerText = '--';
+        hudTime.classList.remove('active', 'timer-blink-yellow', 'timer-blink-red');
+      }
+      if (hudMask) hudMask.style.height = '0%';
+      if (imgEl) imgEl.classList.remove('img-grayscale', 'img-blink-to-gray', 'img-blink-to-color');
+      if (hudConfig.hideUnused && hudCard) hudCard.style.display = 'none';
     }
 
     function playAudioFile(fileName) {
       if (!fileName) return;
-      const fullPath = resolveFilePath(fileName, '');
+      const fullPath = resolveFilePath(fileName, 'sound_type');
       try {
         if (currentTestingAudio) {
           currentTestingAudio.pause();
@@ -1271,18 +1333,8 @@
 
     function testAudioPlay(round) {
       const val = document.getElementById(`cfgVoiceText${round}`).value.trim();
-      if (!val) return alert('請先瀏覽選取音效檔案！');
+      if (!val) return alert('請先從下拉清單選取音效檔案！');
       playAudioFile(val);
-    }
-
-    async function selectImgFile(round) {
-      const fileName = await ipcRenderer.invoke('select-file', [{ name: 'Images', extensions: ['jpg', 'png', 'gif', 'webp'] }]);
-      if (fileName) document.getElementById(`cfgImg${round}`).value = fileName;
-    }
-
-    async function selectAudioFile(round) {
-      const fileName = await ipcRenderer.invoke('select-file', [{ name: 'Audio', extensions: ['mp3', 'wav', 'ogg'] }]);
-      if (fileName) document.getElementById(`cfgVoiceText${round}`).value = fileName;
     }
 
     function updateRound2Visibility(mode) {
@@ -1294,26 +1346,14 @@
 
     document.getElementsByName('cfgMode').forEach(r => r.addEventListener('change', (e) => updateRound2Visibility(e.target.value)));
 
-    /* ★ 核心倒數引擎：標準秒數計時 + 歸零銜接延遲等待 + 雙重警示閃爍 */
+    // 核心倒數引擎
     function triggerCountdown(t) {
       if (!isSystemEnabled) return;
 
       if (t.hotkeyAction === 'toggle' && intervals[t.id]) {
         clearInterval(intervals[t.id]);
         delete intervals[t.id];
-        document.querySelectorAll(`.timer-val-${t.id}`).forEach(el => {
-          el.innerText = t.sec1;
-          el.classList.remove('active', 'timer-blink-yellow', 'timer-blink-red');
-        });
-        const hudTime = document.getElementById(`hud-time-${t.id}`);
-        const hudMask = document.getElementById(`hud-mask-${t.id}`);
-        const hudCard = document.getElementById(`hud-card-${t.id}`);
-        if (hudTime) {
-          hudTime.innerText = '--';
-          hudTime.classList.remove('active', 'timer-blink-yellow', 'timer-blink-red');
-        }
-        if (hudMask) hudMask.style.height = '0%';
-        if (hudConfig.hideUnused && hudCard) hudCard.style.display = 'none';
+        resetSingleTimerUI(t);
         return;
       }
 
@@ -1321,121 +1361,215 @@
 
       let baseDuration = t.sec1;
       let round = 1;
-      let played = false;
       let isWaitingGap = false;
+      const isCountUp = (t.direction === 'up');
 
       let startTime = Date.now();
       let totalDurationMs = baseDuration * 1000;
 
-      const mainTargets = document.querySelectorAll(`.timer-val-${t.id}`);
-      const hudTimeEl = document.getElementById(`hud-time-${t.id}`);
-      const hudMaskEl = document.getElementById(`hud-mask-${t.id}`);
-      const hudCard = document.getElementById(`hud-card-${t.id}`);
+      const getAudioTriggers = (r) => {
+        const pMode = (r === 1) ? (t.playMode1 || 'single') : (t.playMode2 || 'single');
+        const steps = (r === 1) ? (t.voiceSteps1 || 1) : (t.voiceSteps2 || 1);
+        const adv = (r === 1) ? (t.voiceAdvance1 ?? 2) : (t.voiceAdvance2 ?? 2);
 
-      if (hudCard) hudCard.style.display = 'flex';
-
-      const updateUI = (val) => {
-        const displayVal = Math.max(0, Math.round(val * 10) / 10);
-
-        mainTargets.forEach(el => {
-          el.innerText = displayVal;
-          el.classList.add('active');
-
-          if (displayVal <= 3) {
-            el.classList.remove('timer-blink-yellow');
-            el.classList.add('timer-blink-red');
-          } else if (displayVal <= 10) {
-            el.classList.remove('timer-blink-red');
-            el.classList.add('timer-blink-yellow');
-          } else {
-            el.classList.remove('timer-blink-yellow', 'timer-blink-red');
+        if (pMode === 'single') {
+          return [{ timeSec: adv, played: false }];
+        } else {
+          const triggers = [];
+          const interval = baseDuration / (steps + 1);
+          for (let i = 1; i <= steps; i++) {
+            triggers.push({ timeSec: baseDuration - (interval * i), played: false });
           }
-        });
-
-        if (hudTimeEl) {
-          hudTimeEl.innerText = displayVal;
-          hudTimeEl.classList.add('active');
-
-          if (displayVal <= 3) {
-            hudTimeEl.classList.remove('timer-blink-yellow');
-            hudTimeEl.classList.add('timer-blink-red');
-          } else if (displayVal <= 10) {
-            hudTimeEl.classList.remove('timer-blink-red');
-            hudTimeEl.classList.add('timer-blink-yellow');
-          } else {
-            hudTimeEl.classList.remove('timer-blink-yellow', 'timer-blink-red');
-          }
-        }
-
-        if (hudMaskEl && t.iconMode === 'cooldown') {
-          const ratio = Math.max(0, Math.min(1, displayVal / baseDuration));
-          hudMaskEl.style.height = `${(1 - ratio) * 100}%`;
+          return triggers;
         }
       };
 
-      updateUI(baseDuration);
+      let audioSchedule = getAudioTriggers(round);
+
+      const initHudCard = document.getElementById(`hud-card-${t.id}`);
+      if (initHudCard) initHudCard.style.display = 'flex';
+
+      const swapImageForRound = (r) => {
+        const curCard = document.getElementById(`hud-card-${t.id}`);
+        const imgEl = curCard ? curCard.querySelector('.hud-img') : null;
+        if (!imgEl) return;
+        
+        const imgName = (r === 1) ? t.img1 : (t.img2 || t.img1);
+        const fullImgPath = resolveFilePath(imgName, 'png_type');
+        
+        if (fullImgPath) {
+          imgEl.src = fullImgPath;
+          imgEl.style.display = 'block';
+          if (imgEl.nextElementSibling) imgEl.nextElementSibling.style.display = 'none';
+        } else {
+          imgEl.style.display = 'none';
+          if (imgEl.nextElementSibling) imgEl.nextElementSibling.style.display = 'block';
+        }
+      };
+
+      swapImageForRound(round);
+
+      const applyIconEffect = (displayVal, isDone = false) => {
+        const curCard = document.getElementById(`hud-card-${t.id}`);
+        const curImg = curCard ? curCard.querySelector('.hud-img') : null;
+        if (!curImg) return;
+
+        const iconMode = t.iconMode || 'default';
+        curImg.classList.remove('img-grayscale', 'img-color', 'img-blink-to-gray', 'img-blink-to-color');
+
+        if (iconMode === 'raw') {
+          curImg.classList.add('img-color');
+        } else if (iconMode === 'default') {
+          if (isDone) curImg.classList.add('img-grayscale');
+          else if (displayVal <= 3 && !isCountUp) curImg.classList.add('img-blink-to-gray');
+          else curImg.classList.add('img-color');
+        } else if (iconMode === 'cooldown') {
+          if (isDone) curImg.classList.add('img-color');
+          else if (displayVal <= 3 && !isCountUp) curImg.classList.add('img-blink-to-color');
+          else curImg.classList.add('img-grayscale');
+        }
+      };
+
+      const updateUI = (displayVal) => {
+        const val = Math.max(0, Math.ceil(displayVal));
+
+        document.querySelectorAll(`.timer-val-${t.id}`).forEach(el => {
+          el.innerText = val;
+          el.classList.add('active');
+          if (!isCountUp) {
+            el.classList.toggle('timer-blink-red', val <= 3);
+            el.classList.toggle('timer-blink-yellow', val > 3 && val <= 10);
+          }
+        });
+
+        const curHudTime = document.getElementById(`hud-time-${t.id}`);
+        if (curHudTime) {
+          curHudTime.innerText = val;
+          curHudTime.classList.add('active');
+          if (!isCountUp) {
+            curHudTime.classList.toggle('timer-blink-red', val <= 3);
+            curHudTime.classList.toggle('timer-blink-yellow', val > 3 && val <= 10);
+          }
+        }
+
+        const curHudMask = document.getElementById(`hud-mask-${t.id}`);
+        if (curHudMask && t.iconMode === 'cooldown') {
+          const ratio = isCountUp ? Math.min(1, displayVal / baseDuration) : Math.max(0, Math.min(1, displayVal / baseDuration));
+          curHudMask.style.height = `${(1 - ratio) * 100}%`;
+        }
+
+        applyIconEffect(displayVal, false);
+      };
+
+      updateUI(isCountUp ? 0 : baseDuration);
 
       intervals[t.id] = setInterval(() => {
         if (isWaitingGap) return;
 
-        const now = Date.now();
-        const elapsed = now - startTime;
+        const elapsed = Date.now() - startTime;
         const remainingSec = (totalDurationMs - elapsed) / 1000;
+        const elapsedSec = elapsed / 1000;
+        const currentVal = isCountUp ? elapsedSec : remainingSec;
 
-        updateUI(remainingSec);
+        updateUI(currentVal);
 
-        const targetAdvance = (round === 1) ? (t.voiceAdvance1 || 2) : (t.voiceAdvance2 || 2);
         const targetAudio = (round === 1) ? t.voiceText1 : t.voiceText2;
-
-        if (remainingSec <= targetAdvance && !played) {
-          played = true;
-          if (targetAudio) playAudioFile(targetAudio);
+        if (targetAudio) {
+          audioSchedule.forEach(item => {
+            if (!item.played && remainingSec <= item.timeSec) {
+              item.played = true;
+              playAudioFile(targetAudio);
+            }
+          });
         }
 
-        if (remainingSec <= 0) {
-          played = false;
+        const isFinished = isCountUp ? (elapsed >= totalDurationMs) : (remainingSec <= 0);
 
+        if (isFinished) {
           if (t.mode === 'once') {
             clearInterval(intervals[t.id]);
             delete intervals[t.id];
-            mainTargets.forEach(el => {
-              el.innerText = t.sec1;
-              el.classList.remove('active', 'timer-blink-yellow', 'timer-blink-red');
-            });
-            if (hudTimeEl) {
-              hudTimeEl.innerText = '--';
-              hudTimeEl.classList.remove('active', 'timer-blink-yellow', 'timer-blink-red');
+            
+            if (t.hotkeyAction === 'toggle') {
+              resetSingleTimerUI(t);
+            } else {
+              applyIconEffect(0, true);
+              updateUI(isCountUp ? baseDuration : 0);
             }
-            if (hudMaskEl) hudMaskEl.style.height = '0%';
-            if (hudConfig.hideUnused && hudCard) hudCard.style.display = 'none';
-          } 
-          else if (t.mode === 'loop' || t.mode === 'dual') {
+          } else if (t.mode === 'loop' || t.mode === 'dual') {
+            applyIconEffect(0, true);
             isWaitingGap = true;
-            updateUI(0);
-
-            const gapMs = Math.round(delayCompensationSec * 1000);
+            updateUI(isCountUp ? baseDuration : 0);
 
             setTimeout(() => {
               if (!intervals[t.id]) return;
-
               if (t.mode === 'loop') {
                 baseDuration = t.sec1;
               } else if (t.mode === 'dual') {
                 round = (round === 1) ? 2 : 1;
                 baseDuration = (round === 2) ? (t.sec2 || t.sec1) : t.sec1;
+                swapImageForRound(round);
               }
-
+              audioSchedule = getAudioTriggers(round);
               totalDurationMs = baseDuration * 1000;
               startTime = Date.now();
               isWaitingGap = false;
-              updateUI(baseDuration);
-            }, gapMs);
+              updateUI(isCountUp ? 0 : baseDuration);
+            }, Math.round(delayCompensationSec * 1000));
           }
         }
       }, 50);
     }
 
-    function renderEditView() {
+    async function populateAssetDropdowns() {
+      const [images, sounds] = await Promise.all([
+        ipcRenderer.invoke('scan-assets', 'png_type'),
+        ipcRenderer.invoke('scan-assets', 'sound_type')
+      ]);
+
+      const updateSelect = (selectId, fileList, currentVal) => {
+        const sel = document.getElementById(selectId);
+        sel.innerHTML = '<option value="">( 無 )</option>';
+        fileList.forEach(file => {
+          const opt = document.createElement('option');
+          opt.value = file;
+          opt.innerText = file;
+          if (file === currentVal) opt.selected = true;
+          sel.appendChild(opt);
+        });
+      };
+
+      const curP = getActiveProfile();
+      const cur = curP.timers.find(t => t.id === selectedTimerId) || {};
+
+      updateSelect('cfgImg1', images, cur.img1 || '');
+      updateSelect('cfgImg2', images, cur.img2 || '');
+      updateSelect('cfgVoiceText1', sounds, cur.voiceText1 || '');
+      updateSelect('cfgVoiceText2', sounds, cur.voiceText2 || '');
+    }
+
+    function setupImgPreview(btnId, selectId, popoverId) {
+      const btn = document.getElementById(btnId);
+      const sel = document.getElementById(selectId);
+      const popover = document.getElementById(popoverId);
+      const previewImg = popover.querySelector('img');
+
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        const val = sel.value;
+        if (!val) return alert('請先選取圖片檔案！');
+        previewImg.src = resolveFilePath(val, 'png_type');
+        popover.style.display = (popover.style.display === 'block') ? 'none' : 'block';
+      };
+    }
+    setupImgPreview('btnPreviewImg1', 'cfgImg1', 'popoverImg1');
+    setupImgPreview('btnPreviewImg2', 'cfgImg2', 'popoverImg2');
+
+    document.addEventListener('click', () => {
+      document.querySelectorAll('.img-preview-popover').forEach(el => el.style.display = 'none');
+    });
+
+    async function renderEditView() {
       const curP = getActiveProfile();
       const listEl = document.getElementById('editTimerList');
       listEl.innerHTML = '';
@@ -1461,20 +1595,19 @@
       document.getElementById('cfgKeyName').value = cur.keyName;
       document.getElementById('cfgSec1').value = cur.sec1;
       document.getElementById('cfgSec2').value = cur.sec2 || 0;
-      document.getElementById('cfgImg1').value = cur.img1 || '';
-      document.getElementById('cfgImg2').value = cur.img2 || '';
-      document.getElementById('cfgVoiceText1').value = cur.voiceText1 || '';
-      document.getElementById('cfgVoiceAdvance1').value = cur.voiceAdvance1 || 2;
-      document.getElementById('cfgVoiceSteps1').value = cur.voiceSteps1 || 1;
-      document.getElementById('cfgVoiceText2').value = cur.voiceText2 || '';
-      document.getElementById('cfgVoiceAdvance2').value = cur.voiceAdvance2 || 2;
-      document.getElementById('cfgVoiceSteps2').value = cur.voiceSteps2 || 1;
+      document.getElementById('cfgVoiceAdvance1').value = cur.voiceAdvance1 ?? 2;
+      document.getElementById('cfgVoiceSteps1').value = cur.voiceSteps1 ?? 1;
+      document.getElementById('cfgVoiceAdvance2').value = cur.voiceAdvance2 ?? 2;
+      document.getElementById('cfgVoiceSteps2').value = cur.voiceSteps2 ?? 1;
 
       document.getElementsByName('cfgMode').forEach(r => r.checked = (r.value === cur.mode));
       document.getElementsByName('cfgDirection').forEach(r => r.checked = (r.value === (cur.direction || 'down')));
       document.getElementsByName('cfgHotkeyAction').forEach(r => r.checked = (r.value === (cur.hotkeyAction || 'restart')));
       document.getElementsByName('cfgIconMode').forEach(r => r.checked = (r.value === (cur.iconMode || 'cooldown')));
+      document.getElementsByName('cfgPlayMode1').forEach(r => r.checked = (r.value === (cur.playMode1 || 'single')));
+      document.getElementsByName('cfgPlayMode2').forEach(r => r.checked = (r.value === (cur.playMode2 || 'single')));
 
+      await populateAssetDropdowns();
       updateRound2Visibility(cur.mode);
     }
 
@@ -1552,10 +1685,10 @@
       showView('main');
       renderMain();
     };
-    document.getElementById('btnOpenEdit').onclick = () => {
+    document.getElementById('btnOpenEdit').onclick = async () => {
       ipcRenderer.send('switch-view', 'edit');
       showView('edit');
-      renderEditView();
+      await renderEditView();
     };
     document.getElementById('btnCancelEdit').onclick = () => {
       ipcRenderer.send('switch-view', 'main');
@@ -1742,6 +1875,12 @@
       const checkedIcon = Array.from(document.getElementsByName('cfgIconMode')).find(r => r.checked);
       cur.iconMode = checkedIcon ? checkedIcon.value : 'cooldown';
 
+      const checkedPlay1 = Array.from(document.getElementsByName('cfgPlayMode1')).find(r => r.checked);
+      cur.playMode1 = checkedPlay1 ? checkedPlay1.value : 'single';
+
+      const checkedPlay2 = Array.from(document.getElementsByName('cfgPlayMode2')).find(r => r.checked);
+      cur.playMode2 = checkedPlay2 ? checkedPlay2.value : 'single';
+
       saveAll();
       renderEditView();
       renderHudCards();
@@ -1766,9 +1905,11 @@
         img1: "",
         img2: "",
         voiceText1: "",
+        playMode1: "single",
         voiceAdvance1: 2,
         voiceSteps1: 1,
         voiceText2: "",
+        playMode2: "single",
         voiceAdvance2: 2,
         voiceSteps2: 1
       };
@@ -1824,13 +1965,17 @@
       }
     });
 
-    ipcRenderer.invoke('get-current-os').then(osType => {
+    // 程式啟動時，先取得正確的根目錄與作業系統設定
+    async function initApp() {
+      activeRootDir = await ipcRenderer.invoke('get-root-dir');
+      const osType = await ipcRenderer.invoke('get-current-os');
       const savedOs = localStorage.getItem('user_selected_os') || osType;
       updateOsUI(savedOs);
-    });
+      renderMain();
+      renderHudCards();
+    }
 
-    renderMain();
-    renderHudCards();
+    initApp();
   </script>
 </body>
 </html>
