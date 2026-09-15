@@ -48,21 +48,17 @@ function ensureAssetDirs() {
   });
 }
 
-function getFilesRecursively(dir, baseDir, validExts) {
+// 只讀取第一層資料夾的檔案，忽略所有子資料夾（例如 Other）
+function getFilesInDir(dir, validExts) {
   let results = [];
   if (!fs.existsSync(dir)) return results;
 
   const list = fs.readdirSync(dir, { withFileTypes: true });
   for (const dirent of list) {
-    if (dirent.name.startsWith('.')) continue;
-    const fullPath = path.join(dir, dirent.name);
-    if (dirent.isDirectory()) {
-      results = results.concat(getFilesRecursively(fullPath, baseDir, validExts));
-    } else {
+    if (dirent.isFile() && !dirent.name.startsWith('.')) {
       const ext = path.extname(dirent.name).toLowerCase();
       if (validExts.includes(ext)) {
-        const relPath = path.relative(baseDir, fullPath).replace(/\\/g, '/');
-        results.push(relPath);
+        results.push(dirent.name);
       }
     }
   }
@@ -71,9 +67,9 @@ function getFilesRecursively(dir, baseDir, validExts) {
 
 function createWindow() {
   win = new BrowserWindow({
-    width: 760,
+    width: 960,   // 👈 放大預設寬度，確保工具列按鈕一排塞下不換行
     height: 560,
-    minWidth: 400,
+    minWidth: 850, // 👈 拉大最小寬度限制
     minHeight: 250,
     frame: false,
     transparent: true,
@@ -102,7 +98,6 @@ app.whenReady().then(() => {
 
   ipcMain.handle('get-current-os', () => currentOS);
 
-  // 提供給前端索取根目錄路徑的 IPC 介面
   ipcMain.handle('get-root-dir', () => getActiveRootDir());
 
   ipcMain.on('toggle-always-on-top', (event, flag) => {
@@ -129,7 +124,8 @@ app.whenReady().then(() => {
     const validExts = (folderType === 'png_type')
       ? ['.png', '.jpg', '.jpeg', '.gif']
       : ['.mp3', '.wav'];
-    return getFilesRecursively(targetDir, targetDir, validExts);
+    
+    return getFilesInDir(targetDir, validExts);
   });
 
   ipcMain.on('switch-view', (event, targetView) => {
@@ -143,7 +139,7 @@ app.whenReady().then(() => {
       win.setIgnoreMouseEvents(false);
       win.setOpacity(1.0);
       win.setMinimumSize(420, 480);
-      win.setSize(targetView === 'hud-config' ? 440 : 760, targetView === 'hud-config' ? 760 : 560);
+      win.setSize(targetView === 'hud-config' ? 440 : 960, targetView === 'hud-config' ? 760 : 560);
       win.center();
     } else if (targetView === 'edit') {
       if (currentMode === 'floating') {
@@ -155,7 +151,7 @@ app.whenReady().then(() => {
       win.setIgnoreMouseEvents(false);
       win.setOpacity(1.0);
       win.setMinimumSize(680, 520);
-      win.setSize(780, 740);
+      win.setSize(850, 740);
       win.center();
     } else if (targetView === 'floating') {
       currentMode = 'floating';

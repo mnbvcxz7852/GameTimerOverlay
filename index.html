@@ -26,6 +26,8 @@
       font-size: 12px;
       border-radius: 4px;
       cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
     }
     .btn:hover { background: #475569; }
     .btn-blue { background: #2563eb; border-color: #3b82f6; }
@@ -42,6 +44,7 @@
       border: 1px solid #334155;
       border-radius: 4px;
       overflow: hidden;
+      white-space: nowrap;
     }
     .os-btn {
       padding: 3px 8px;
@@ -50,6 +53,7 @@
       color: #94a3b8;
       background: transparent;
       border: none;
+      white-space: nowrap;
     }
     .os-btn.active {
       background: #2563eb;
@@ -80,6 +84,7 @@
       align-items: center;
       background: #151a27;
       padding: 8px 14px;
+      white-space: nowrap;
     }
 
     #view-main {
@@ -89,6 +94,7 @@
       background: #1e2538;
       border: 1px solid #334155;
       border-radius: 6px;
+      position: relative; /* 👈 用於右下角作者註記的絕對定位基準 */
     }
     .main-center-title {
       position: absolute;
@@ -105,9 +111,10 @@
       padding: 8px 14px;
       border-bottom: 1px solid #334155;
       align-items: center;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
+      white-space: nowrap;
     }
-    .main-table { flex: 1; padding: 10px 16px; overflow-y: auto; }
+    .main-table { flex: 1; padding: 10px 16px; overflow-y: auto; padding-bottom: 24px; }
     .table-header {
       display: grid;
       grid-template-columns: 200px 120px 1fr 120px;
@@ -127,6 +134,17 @@
     }
     .val-display { font-size: 26px; font-weight: bold; color: #60a5fa; transition: color 0.2s; }
     .val-display.active { color: #38bdf8; text-shadow: 0 0 8px rgba(56, 189, 248, 0.5); }
+
+    /* 👈 主畫面右下角作者註記樣式 */
+    .author-watermark {
+      position: absolute;
+      right: 12px;
+      bottom: 6px;
+      font-size: 11px;
+      color: #64748b;
+      pointer-events: none;
+      letter-spacing: 0.5px;
+    }
 
     #view-profiles {
       display: none;
@@ -496,7 +514,7 @@
       <button class="btn btn-purple" id="btnOpenEdit">⚙ 編輯計時</button>
       <button class="btn btn-sub" id="btnOpenHudConfig">🖥 懸浮窗設定</button>
       
-      <div style="display:flex; align-items:center; gap:4px; margin-left:2px; font-size:12px; color:#cbd5e1;">
+      <div style="display:flex; align-items:center; gap:4px; margin-left:2px; font-size:12px; color:#cbd5e1; white-space:nowrap;">
         <span>延遲：</span>
         <select id="selDelayCompensation" style="padding:3px 6px; font-size:12px; border-color:#475569;">
           <option value="0.0">標準 (無延遲)</option>
@@ -517,6 +535,9 @@
       </div>
       <div id="mainTimerList"></div>
     </div>
+
+    <!-- 👈 主畫面右下角作者註記 -->
+    <div class="author-watermark">作者:F0416</div>
   </div>
 
   <!-- 2. 設定檔管理視窗 -->
@@ -880,7 +901,6 @@
     let delayCompensationSec = parseFloat(localStorage.getItem('user_delay_compensation')) || 0.3;
     let activeRootDir = '';
 
-    // 動態向後端獲取程式根目錄
     function getActiveRootDir() {
       return activeRootDir || __dirname;
     }
@@ -1346,7 +1366,6 @@
 
     document.getElementsByName('cfgMode').forEach(r => r.addEventListener('change', (e) => updateRound2Visibility(e.target.value)));
 
-    // 核心倒數引擎
     function triggerCountdown(t) {
       if (!isSystemEnabled) return;
 
@@ -1965,7 +1984,6 @@
       }
     });
 
-    // 程式啟動時，先取得正確的根目錄與作業系統設定
     async function initApp() {
       activeRootDir = await ipcRenderer.invoke('get-root-dir');
       const osType = await ipcRenderer.invoke('get-current-os');
